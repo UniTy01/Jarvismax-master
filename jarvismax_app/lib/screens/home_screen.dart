@@ -1,0 +1,674 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/api_service.dart';
+import '../services/websocket_service.dart';
+import '../models/mission.dart';
+import '../theme/design_system.dart';
+import 'mission_detail_screen.dart';
+
+/// Home — the primary Jarvis interface.
+/// Shows: greeting, quick input, system status, approvals, recent missions.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _controller = TextEditingController();
+  final _focus = FocusNode();
+  bool _sending = false;
+  String? _feedback;
+  bool _feedbackIsError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ws = context.watch<WebSocketService>();
+    final api = context.watch<ApiService>();
+
+    return Scaffold(
+      body: SafeArea(
+        child: GestureDetector(
+          onTap: () => _focus.unfocus(),
+          child: RefreshIndicator(
+            onRefresh: api.refresh,
+            color: JDS.blue,
+            backgroundColor: JDS.bgElevated,
+            child: CustomScrollView(slivers: [
+              // ── Header ──
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Row(children: [
+                  // Brand
+                  Container(
+                    width: 34, height: 34,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      gradient: const LinearGradient(
+                        colors: [JDS.blue, JDS.violet],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: const Center(child: Text('J', style: TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white,
+                    ))),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Jarvis', style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w700,
+                    color: JDS.textPrimary, letterSpacing: -0.5,
+                  )),
+                  const Spacer(),
+                  _ConnectionIndicator(connected: ws.isConnected),
+                ]),
+              )),
+
+              // ── Greeting ──
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_dateString(), style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w500, color: JDS.textMuted,
+                  )),
+                  const SizedBox(height: 4),
+                  Text(_greetingText(), style: const TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.w700,
+                    color: JDS.textPrimary, letterSpacing: -0.5, height: 1.2,
+                  )),
+                ]),
+              )),
+
+              // ── Approval Alert ──
+              if (api.pendingActions.isNotEmpty)
+                SliverToBoxAdapter(child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: _ApprovalAlert(count: api.pendingActions.length),
+                )),
+
+              // ── Composer ──
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _Composer(
+                  controller: _controller,
+                  focus: _focus,
+                  sending: _sending,
+                  onSend: _send,
+                ),
+              )),
+
+              // ── Feedback ──
+              if (_feedback != null)
+                SliverToBoxAdapter(child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: _FeedbackBanner(
+                    message: _feedback!,
+                    isError: _feedbackIsError,
+                    onDismiss: () => setState(() => _feedback = null),
+                  ),
+                )),
+
+              // ── Stats ──
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: _StatsRow(api: api),
+              )),
+
+              // ── Recent Missions ──
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                child: JSectionHeader(
+                  title: 'Recent Missions',
+                  count: '${api.missions.length}',
+                  action: TextButton(
+                    onPressed: () => api.refresh(),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Refresh', style: TextStyle(
+                      fontSize: 12, color: JDS.textMuted,
+                    )),
+                  ),
+                ),
+              )),
+
+              // Mission list or empty
+              if (api.loading && api.missions.isEmpty)
+                SliverToBoxAdapter(child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(children: List.generate(3, (_) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _MissionSkeleton(),
+                  ))),
+                ))
+              else if (api.missions.isEmpty)
+                SliverToBoxAdapter(child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: JEmptyState(
+                    icon: Icons.rocket_launch_outlined,
+                    title: 'No missions yet',
+                    subtitle: 'Describe a task above to get started',
+                  ),
+                ))
+              else
+                SliverList(delegate: SliverChildBuilderDelegate(
+                  (_, i) {
+                    final m = api.missions[i];
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                      child: _MissionCard(mission: m, onTap: () => _openMission(m)),
+                    );
+                  },
+                  childCount: api.missions.take(10).length,
+                )),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _dateString() {
+    final now = DateTime.now();
+    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
+  }
+
+  String _greetingText() {
+    final h = DateTime.now().hour;
+    if (h < 6) return 'Working late?';
+    if (h < 12) return 'Good morning.';
+    if (h < 18) return 'Good afternoon.';
+    return 'Good evening.';
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() { _sending = true; _feedback = null; });
+
+    try {
+      final api = context.read<ApiService>();
+      final result = await api.submitMission(text);
+      if (!mounted) return;
+
+      if (result != null) {
+        setState(() {
+          _sending = false;
+          _feedback = '✓ Mission started';
+          _feedbackIsError = false;
+        });
+        _controller.clear();
+        await api.refresh();
+      } else {
+        setState(() {
+          _sending = false;
+          _feedback = 'Failed to submit mission';
+          _feedbackIsError = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() {
+        _sending = false;
+        _feedback = 'Connection error';
+        _feedbackIsError = true;
+      });
+    }
+  }
+
+  void _openMission(Mission m) {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => MissionDetailScreen(mission: m),
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+}
+
+// ── Connection Indicator ─────────────────────────────────────────────────────
+
+class _ConnectionIndicator extends StatelessWidget {
+  final bool connected;
+  const _ConnectionIndicator({required this.connected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: JDS.bgElevated,
+        borderRadius: BorderRadius.circular(JDS.radiusSm),
+        border: Border.all(color: JDS.borderSubtle),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 7, height: 7,
+          decoration: BoxDecoration(
+            color: connected ? JDS.green : JDS.textDim,
+            shape: BoxShape.circle,
+            boxShadow: connected
+                ? [BoxShadow(color: JDS.green.withValues(alpha: 0.4), blurRadius: 4)]
+                : null,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(connected ? 'Online' : 'Offline', style: TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w500,
+          color: connected ? JDS.textSecondary : JDS.textDim,
+        )),
+      ]),
+    );
+  }
+}
+
+// ── Approval Alert ───────────────────────────────────────────────────────────
+
+class _ApprovalAlert extends StatelessWidget {
+  final int count;
+  const _ApprovalAlert({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: JDS.amberSoft,
+        borderRadius: BorderRadius.circular(JDS.radiusMd),
+        border: Border.all(color: JDS.amber.withValues(alpha: 0.2)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.pending_actions_rounded, size: 20, color: JDS.amber),
+        const SizedBox(width: 12),
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$count item${count > 1 ? 's' : ''} need${count == 1 ? 's' : ''} your review',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: JDS.amber)),
+            const Text('Jarvis needs your decision before proceeding',
+                style: TextStyle(fontSize: 12, color: JDS.textSecondary)),
+          ],
+        )),
+        const Icon(Icons.chevron_right_rounded, color: JDS.amber, size: 20),
+      ]),
+    );
+  }
+}
+
+// ── Composer ──────────────────────────────────────────────────────────────────
+
+class _Composer extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focus;
+  final bool sending;
+  final VoidCallback onSend;
+
+  const _Composer({
+    required this.controller,
+    required this.focus,
+    required this.sending,
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: JDS.bgSurface,
+        borderRadius: BorderRadius.circular(JDS.radiusLg),
+        border: Border.all(color: JDS.borderDefault),
+      ),
+      child: Column(children: [
+        TextField(
+          controller: controller,
+          focusNode: focus,
+          maxLines: 3,
+          minLines: 2,
+          style: const TextStyle(color: JDS.textPrimary, fontSize: 15, height: 1.5),
+          decoration: const InputDecoration(
+            hintText: 'What do you need? Research, analysis, code, automation…',
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            filled: false,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const Divider(height: 24),
+        Row(children: [
+          const Text('Jarvis will handle the rest', style: TextStyle(
+            fontSize: 12, color: JDS.textDim,
+          )),
+          const Spacer(),
+          SizedBox(
+            height: 36,
+            child: ElevatedButton(
+              onPressed: sending ? null : onSend,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+              ),
+              child: sending
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.play_arrow_rounded, size: 16),
+                      SizedBox(width: 4),
+                      Text('Run'),
+                    ]),
+            ),
+          ),
+        ]),
+      ]),
+    );
+  }
+}
+
+// ── Feedback Banner ──────────────────────────────────────────────────────────
+
+class _FeedbackBanner extends StatelessWidget {
+  final String message;
+  final bool isError;
+  final VoidCallback onDismiss;
+
+  const _FeedbackBanner({
+    required this.message,
+    required this.isError,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isError ? JDS.red : JDS.green;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(JDS.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(children: [
+        Text(message, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w500)),
+        const Spacer(),
+        GestureDetector(
+          onTap: onDismiss,
+          child: Icon(Icons.close_rounded, size: 16, color: color),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── Stats Row ────────────────────────────────────────────────────────────────
+
+class _StatsRow extends StatelessWidget {
+  final ApiService api;
+  const _StatsRow({required this.api});
+
+  @override
+  Widget build(BuildContext context) {
+    final running = api.missions.where((m) =>
+        m.status.toLowerCase() == 'running' || m.status.toLowerCase() == 'executing').length;
+    final done = api.missions.where((m) =>
+        m.status.toLowerCase() == 'completed' || m.status.toLowerCase() == 'done').length;
+    final failed = api.missions.where((m) =>
+        m.status.toLowerCase() == 'failed').length;
+
+    return Row(children: [
+      Expanded(child: _StatTile(value: '$running', label: 'Active', color: JDS.blue)),
+      const SizedBox(width: 10),
+      Expanded(child: _StatTile(value: '$done', label: 'Done', color: JDS.green)),
+      const SizedBox(width: 10),
+      Expanded(child: _StatTile(value: '$failed', label: 'Failed', color: JDS.red)),
+      const SizedBox(width: 10),
+      Expanded(child: _StatTile(
+        value: api.status.isOnline ? '✓' : '—',
+        label: 'System',
+        color: api.status.isOnline ? JDS.green : JDS.textDim,
+      )),
+    ]);
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+  const _StatTile({required this.value, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: JDS.bgSurface,
+        borderRadius: BorderRadius.circular(JDS.radiusMd),
+        border: Border.all(color: JDS.borderSubtle),
+      ),
+      child: Column(children: [
+        Text(value, style: TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w700, color: color, height: 1,
+        )),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(
+          fontSize: 11, color: JDS.textMuted, fontWeight: FontWeight.w500,
+        )),
+      ]),
+    );
+  }
+}
+
+// ── Mission Card ─────────────────────────────────────────────────────────────
+
+class _MissionCard extends StatelessWidget {
+  final Mission mission;
+  final VoidCallback onTap;
+  const _MissionCard({required this.mission, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = mission.status.toLowerCase();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: JDS.bgSurface,
+          borderRadius: BorderRadius.circular(JDS.radiusMd),
+          border: Border.all(color: JDS.borderSubtle),
+        ),
+        child: Row(children: [
+          JStatusDot(status: status),
+          const SizedBox(width: 12),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                mission.userInput.isNotEmpty ? mission.userInput : mission.id,
+                style: const TextStyle(fontSize: 14, color: JDS.textPrimary, fontWeight: FontWeight.w500),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(_missionMeta(mission), style: const TextStyle(
+                fontSize: 12, color: JDS.textDim,
+              )),
+            ],
+          )),
+          const SizedBox(width: 8),
+          JStatusBadge.fromStatus(status),
+        ]),
+      ),
+    );
+  }
+
+  String _missionMeta(Mission m) {
+    final parts = <String>[];
+    if (m.createdAt.isNotEmpty) {
+      final dt = DateTime.tryParse(m.createdAt);
+      if (dt != null) parts.add(_timeAgo(dt));
+    }
+    return parts.join(' · ');
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+}
+
+// ── Mission Skeleton ─────────────────────────────────────────────────────────
+
+class _MissionSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: JDS.bgSurface,
+        borderRadius: BorderRadius.circular(JDS.radiusMd),
+        border: Border.all(color: JDS.borderSubtle),
+      ),
+      child: Row(children: [
+        Container(
+          width: 8, height: 8,
+          decoration: BoxDecoration(
+            color: JDS.bgOverlay,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(height: 14, width: 200, decoration: BoxDecoration(
+              color: JDS.bgOverlay, borderRadius: BorderRadius.circular(4),
+            )),
+            const SizedBox(height: 6),
+            Container(height: 10, width: 80, decoration: BoxDecoration(
+              color: JDS.bgOverlay, borderRadius: BorderRadius.circular(4),
+            )),
+          ],
+        )),
+      ]),
+    );
+  }
+}
+
+// ── Input card ─────────────────────────────────────────────────
+/// Primary mission input. Prompt: "What do you want Jarvis to do?"
+class _InputCard extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onSubmit;
+  const _InputCard({required this.controller, required this.onSubmit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'What do you want Jarvis to do?',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Describe your task…',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _SuggestionChips(onTap: (s) => controller.text = s),
+            const SizedBox(height: 8),
+            ElevatedButton(onPressed: onSubmit, child: const Text('Start')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Suggestion chips ──────────────────────────────────────────
+const List<String> _suggestions = [
+  'Create a performance report',
+  'Research market trends',
+  'Analyze our key metrics',
+  'Write a summary of recent activity',
+  'Find cost optimization opportunities',
+  'Analyze a website',
+  'Create a Python script',
+  'Research competitors',
+];
+
+class _SuggestionChips extends StatelessWidget {
+  final void Function(String) onTap;
+  const _SuggestionChips({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      children: _suggestions.map((s) => ActionChip(
+        label: Text(s),
+        onPressed: () => onTap(s),
+      )).toList(),
+    );
+  }
+}
+
+// ── Friendly status mapping ───────────────────────────────────
+String _friendlyStatus(String raw) {
+  switch (raw.toLowerCase()) {
+    case 'done':
+    case 'completed':
+    case 'success':      return 'Done';
+    case 'failed':
+    case 'error':        return 'Error';
+    case 'pending_approval':
+    case 'awaiting_approval': return 'Needs your approval';
+    case 'running':
+    case 'executing':    return 'Working';
+    case 'submitted':
+    case 'pending':      return 'Waiting';
+    case 'planning':
+    case 'classifying':  return 'Analyzing';
+    case 'searching':    return 'Searching';
+    default:             return raw;
+  }
+}
+
+// ── Mission progress card ─────────────────────────────────────
+class _MissionProgress extends StatelessWidget {
+  final dynamic mission;
+  const _MissionProgress({required this.mission});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = mission?.status ?? 'pending';
+    return ListTile(
+      title: Text(mission?.input ?? ''),
+      subtitle: Text(_friendlyStatus(status)),
+    );
+  }
+}

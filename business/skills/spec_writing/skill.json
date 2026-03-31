@@ -1,0 +1,80 @@
+{
+  "id": "spec.writing",
+  "version": "1.0",
+  "name": "Technical Spec Writing",
+  "description": "Generate a structured technical specification: problem statement, solution design, API contracts, data model, edge cases, and implementation plan.",
+  "domain": "technical",
+  "inputs": [
+    {
+      "name": "feature",
+      "type": "string",
+      "required": true,
+      "description": "Feature or system to specify"
+    },
+    {
+      "name": "context",
+      "type": "string",
+      "required": false,
+      "description": "Existing system context or constraints"
+    },
+    {
+      "name": "requirements",
+      "type": "string",
+      "required": false,
+      "description": "Specific requirements or acceptance criteria"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "problem_statement",
+      "type": "json",
+      "description": "Clear problem definition with scope, impact, and success criteria"
+    },
+    {
+      "name": "solution_design",
+      "type": "json",
+      "description": "High-level solution approach with architecture decisions and trade-offs"
+    },
+    {
+      "name": "api_contracts",
+      "type": "list",
+      "description": "API endpoint definitions with request/response schemas"
+    },
+    {
+      "name": "data_model",
+      "type": "list",
+      "description": "Data entities, relationships, and storage decisions"
+    },
+    {
+      "name": "edge_cases",
+      "type": "list",
+      "description": "Edge cases, failure modes, and handling strategies"
+    },
+    {
+      "name": "implementation_plan",
+      "type": "list",
+      "description": "Phased implementation steps with effort estimates"
+    }
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {
+      "name": "spec_completeness",
+      "description": "All major spec sections present",
+      "check_type": "completeness",
+      "threshold": 0.8
+    },
+    {
+      "name": "design_justified",
+      "description": "Architecture decisions include trade-off rationale",
+      "check_type": "coherence",
+      "threshold": 0.7
+    },
+    {
+      "name": "output_structure",
+      "check_type": "structure",
+      "threshold": 0.8
+    }
+  ],
+  "tags": ["technical", "spec", "architecture", "engineering", "tier4"]
+}

@@ -1,0 +1,42 @@
+{
+  "template_id": "lead_generation_system",
+  "name": "Lead Generation System",
+  "description": "Build a lead generation pipeline: identify target personas, design acquisition channels, create content strategy, and set up automation.",
+  "goal": "Create a structured lead generation system for a product or service",
+  "steps": [
+    {
+      "type": "skill",
+      "id": "persona.basic",
+      "name": "Define Target Personas"
+    },
+    {
+      "type": "skill",
+      "id": "acquisition.basic",
+      "name": "Design Acquisition Channels"
+    },
+    {
+      "type": "business_action",
+      "id": "workflow.blueprint",
+      "name": "Build Automation Blueprint"
+    },
+    {
+      "type": "skill",
+      "id": "automation_opportunity.basic",
+      "name": "Identify Automation Opportunities"
+    }
+  ],
+  "skills_required": [
+    "persona.basic",
+    "acquisition.basic",
+    "automation_opportunity.basic"
+  ],
+  "tools_required": [],
+  "expected_outputs": [
+    "Target persona profiles",
+    "Channel ranking with ROI estimates",
+    "Workflow blueprint with n8n hints",
+    "Automation opportunity assessment"
+  ],
+  "risk_level": "low",
+  "tags": ["leads", "acquisition", "automation"]
+}

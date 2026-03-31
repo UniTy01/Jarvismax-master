@@ -1,0 +1,48 @@
+{
+  "playbook_id": "content_strategy",
+  "name": "Content Strategy",
+  "description": "Build a content strategy from scratch: understand the audience, position the brand, design the funnel, create copy frameworks, and plan growth.",
+  "version": "1.0",
+  "tier": "growth",
+  "goal_template": "Build content strategy for {product}",
+  "steps": [
+    {
+      "skill_id": "persona.basic",
+      "name": "Audience Research",
+      "description": "Build content audience persona with pain points and interests"
+    },
+    {
+      "skill_id": "positioning.basic",
+      "name": "Brand Positioning",
+      "description": "Define brand voice and market positioning for content",
+      "depends_on": ["pb-content_strategy-s1"]
+    },
+    {
+      "skill_id": "funnel.design",
+      "name": "Content Funnel",
+      "description": "Design content funnel stages (awareness → consideration → conversion)",
+      "depends_on": ["pb-content_strategy-s2"]
+    },
+    {
+      "skill_id": "copywriting.basic",
+      "name": "Copy Frameworks",
+      "description": "Generate headline templates, CTAs, and email subject lines",
+      "depends_on": ["pb-content_strategy-s2"]
+    },
+    {
+      "skill_id": "growth.plan",
+      "name": "Distribution Plan",
+      "description": "Plan content distribution channels and growth experiments",
+      "depends_on": ["pb-content_strategy-s3", "pb-content_strategy-s4"]
+    }
+  ],
+  "success_criteria": [
+    "Content audience persona defined",
+    "Brand positioning and voice established",
+    "Content funnel mapped",
+    "Copy frameworks ready for production",
+    "Distribution plan with channels and timeline"
+  ],
+  "tags": ["content", "strategy", "copy", "funnel", "growth"],
+  "estimated_duration_min": 20
+}

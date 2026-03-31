@@ -1,0 +1,41 @@
+# ================================================================
+# JARVIS MAX — docker-compose.override.yml (développement)
+# Bind-mount du code source Python pour éviter le rebuild à chaque modif.
+#
+# Ce fichier est chargé AUTOMATIQUEMENT par docker-compose (pas besoin de -f).
+# Il surcharge docker-compose.yml pour la section jarvis UNIQUEMENT.
+#
+# En production (CI/CD) : supprimer ou ignorer ce fichier.
+# En développement : garder pour le hot-reload du code.
+# ================================================================
+
+services:
+
+  jarvis:
+    environment:
+      # Anthropic API key désactivée — crédit épuisé, cause 300ms overhead + log noise
+      # sur tous les rôles builder/reviewer/improve. OpenAI prend le relais directement.
+      # Réactiver quand le crédit Anthropic est rechargé.
+      ANTHROPIC_API_KEY: ""
+      # Fallback cloud : openai avant ollama pour les rôles cloud-preferred (builder/reviewer/improve)
+      # Par défaut MODEL_FALLBACK=ollama mais Ollama est lent — OpenAI plus fiable pour ces rôles.
+      MODEL_FALLBACK: "openai"
+    volumes:
+      # Persistance workspace et logs (inchangé)
+      - ./workspace:/app/workspace
+      - ./logs:/app/logs
+      # Bind-mount du code source Python — sync immédiat sans rebuild
+      # Les modifications locales sont visibles dans le container au redémarrage du process.
+      - ./agents:/app/agents
+      - ./core:/app/core
+      - ./memory:/app/memory
+      - ./config:/app/config
+      - ./monitoring:/app/monitoring
+      # Exécuteur supervisé
+      - ./executor:/app/executor
+      # Pipeline d'auto-amélioration
+      - ./self_improve:/app/self_improve
+      # Suite de tests (validate.py inclus)
+      - ./tests:/app/tests
+      # Fichiers racine
+      - ./main.py:/app/main.py

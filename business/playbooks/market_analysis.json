@@ -1,0 +1,45 @@
+{
+  "playbook_id": "market_analysis",
+  "name": "Market Analysis",
+  "description": "Deep-dive market analysis: research the market, identify customer personas, analyze competitors, and surface positioning opportunities.",
+  "version": "1.0",
+  "tier": "strategy",
+  "goal_template": "Analyze the {sector} market for business opportunities",
+  "steps": [
+    {
+      "skill_id": "market_research.basic",
+      "name": "Market Research",
+      "description": "TAM/SAM/SOM sizing, problem identification, trend detection",
+      "expected_outputs": ["tam", "sam", "som", "problems", "opportunities", "trends", "risks"]
+    },
+    {
+      "skill_id": "persona.basic",
+      "name": "Customer Persona",
+      "description": "Build ideal customer profile with pain points and motivations",
+      "depends_on": ["pb-market_analysis-s1"],
+      "expected_outputs": ["persona", "pain_points", "motivations", "objections"]
+    },
+    {
+      "skill_id": "competitor.analysis",
+      "name": "Competitive Analysis",
+      "description": "Map competitor landscape, identify gaps and advantages",
+      "depends_on": ["pb-market_analysis-s1"],
+      "expected_outputs": ["competitors", "gaps", "advantages"]
+    },
+    {
+      "skill_id": "positioning.basic",
+      "name": "Market Positioning",
+      "description": "Define category, unique attributes, and positioning statement",
+      "depends_on": ["pb-market_analysis-s2", "pb-market_analysis-s3"],
+      "expected_outputs": ["category", "unique_attributes", "positioning_statement"]
+    }
+  ],
+  "success_criteria": [
+    "TAM/SAM/SOM estimates with methodology",
+    "At least 1 detailed customer persona",
+    "3+ competitors analyzed with weakness mapping",
+    "Clear positioning statement"
+  ],
+  "tags": ["market", "research", "analysis", "strategy"],
+  "estimated_duration_min": 15
+}

@@ -1,0 +1,44 @@
+{
+  "id": "n8n.workflow.trigger",
+  "name": "n8n Workflow Trigger",
+  "description": "Trigger an n8n workflow via webhook URL. Sends JSON payload and captures response. Used for automation execution from business workflows.",
+  "category": "automation",
+  "risk_level": "medium",
+  "requires_approval": true,
+  "required_secrets": ["N8N_WEBHOOK_URL"],
+  "required_configs": [],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "payload": {
+        "type": "object",
+        "description": "JSON payload to send to n8n webhook"
+      },
+      "webhook_url_override": {
+        "type": "string",
+        "description": "Optional URL override (default: N8N_WEBHOOK_URL env)"
+      }
+    },
+    "required": ["payload"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {"type": "string", "enum": ["triggered", "failed", "not_configured"]},
+      "http_status": {"type": "integer"},
+      "response": {"type": "string"},
+      "timestamp": {"type": "string"},
+      "duration_ms": {"type": "number"}
+    }
+  },
+  "retry_policy": {
+    "max_retries": 2,
+    "backoff_seconds": 3,
+    "retry_on_status": [429, 500, 502, 503, 504],
+    "enabled": false
+  },
+  "timeout": 30,
+  "tags": ["n8n", "webhook", "automation", "workflow"],
+  "version": "1.0",
+  "enabled": true
+}

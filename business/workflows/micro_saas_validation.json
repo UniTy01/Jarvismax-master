@@ -1,0 +1,57 @@
+{
+  "template_id": "micro_saas_validation",
+  "name": "Micro-SaaS Idea Validation",
+  "description": "Full pipeline: research market, build persona, design offer, scope MVP, plan acquisition, then optionally trigger n8n for automated outreach.",
+  "goal": "Validate a micro-SaaS idea from concept to actionable spec",
+  "steps": [
+    {
+      "type": "business_action",
+      "id": "venture.research_workspace",
+      "name": "Market Research",
+      "inputs": {}
+    },
+    {
+      "type": "skill",
+      "id": "persona.basic",
+      "name": "Build Customer Persona"
+    },
+    {
+      "type": "business_action",
+      "id": "offer.package",
+      "name": "Design Offer Package"
+    },
+    {
+      "type": "business_action",
+      "id": "saas.mvp_spec",
+      "name": "Scope MVP"
+    },
+    {
+      "type": "skill",
+      "id": "acquisition.basic",
+      "name": "Plan Acquisition Strategy"
+    },
+    {
+      "type": "tool",
+      "id": "n8n.workflow.trigger",
+      "name": "Trigger Outreach Workflow (optional)"
+    }
+  ],
+  "skills_required": [
+    "market_research.basic",
+    "persona.basic",
+    "offer_design.basic",
+    "saas_scope.basic",
+    "acquisition.basic"
+  ],
+  "tools_required": ["n8n.workflow.trigger"],
+  "expected_outputs": [
+    "Market research dossier",
+    "Customer persona",
+    "Offer package with pricing",
+    "MVP spec with features and roadmap",
+    "Acquisition strategy",
+    "n8n workflow execution log"
+  ],
+  "risk_level": "medium",
+  "tags": ["saas", "validation", "end-to-end"]
+}

@@ -1,0 +1,49 @@
+[
+  {
+    "input": {
+      "product": "AI code review tool for engineering teams",
+      "goal": "free trial signup",
+      "audience": "Engineering managers at mid-size companies"
+    },
+    "output": {
+      "page_structure": [
+        {"section": "hero", "purpose": "Grab attention with the core promise", "content": "Headline + subheadline + CTA + product screenshot"},
+        {"section": "logo_bar", "purpose": "Establish credibility immediately", "content": "5-8 recognizable company logos"},
+        {"section": "problem", "purpose": "Name the pain", "content": "3 pain points of manual code review (slow, inconsistent, blocking)"},
+        {"section": "solution", "purpose": "Show the transformation", "content": "Before/after comparison: manual vs AI-assisted"},
+        {"section": "how_it_works", "purpose": "Reduce perceived complexity", "content": "3-step process: Connect repo → AI reviews PRs → Team ships faster"},
+        {"section": "features", "purpose": "Detail the value", "content": "6 features with icons and 1-line benefits"},
+        {"section": "testimonials", "purpose": "Prove it works", "content": "3 quotes from engineering leads"},
+        {"section": "stats", "purpose": "Quantify impact", "content": "50% faster reviews, 3x more PRs merged, 90% accuracy"},
+        {"section": "faq", "purpose": "Handle objections", "content": "6 common questions with clear answers"},
+        {"section": "pricing", "purpose": "Enable decision", "content": "3 tiers: Free/Pro/Enterprise"},
+        {"section": "final_cta", "purpose": "Close the conversion", "content": "Repeat hero CTA with urgency element"}
+      ],
+      "hero_section": {
+        "headline": "Ship Better Code, Faster",
+        "subheadline": "AI-powered code review that catches bugs, enforces standards, and unblocks your team — before humans even look at the PR.",
+        "cta_text": "Start Free Trial",
+        "cta_subtext": "No credit card required · 14-day trial",
+        "visual": "Animated GIF showing AI review comments appearing on a GitHub PR"
+      },
+      "social_proof_strategy": {
+        "above_fold": "Logo bar with 5+ recognizable company logos",
+        "mid_page": "3 testimonial cards with photo, name, company, quote",
+        "before_pricing": "Stat bar: 50% faster · 3x throughput · 90% accuracy",
+        "near_cta": "Trust badges: SOC 2, GitHub Marketplace verified"
+      },
+      "cta_strategy": {
+        "hero": {"text": "Start Free Trial", "type": "primary"},
+        "after_features": {"text": "See It Review Your Code", "type": "demo"},
+        "after_testimonials": {"text": "Join 500+ Engineering Teams", "type": "social"},
+        "final": {"text": "Start Free — No Credit Card Needed", "type": "urgency"}
+      },
+      "objection_flow": [
+        {"objection": "AI can't understand our codebase", "placement": "after features", "method": "Show customization: trains on YOUR style guide and patterns"},
+        {"objection": "Will it slow down our workflow?", "placement": "how_it_works", "method": "Show async: reviews happen in parallel, never blocking"},
+        {"objection": "Is it secure?", "placement": "faq", "method": "SOC 2 badge + 'code never stored' guarantee"},
+        {"objection": "We already have linters", "placement": "problem section", "method": "Position as complementary: logic-level review, not just style"}
+      ]
+    }
+  }
+]

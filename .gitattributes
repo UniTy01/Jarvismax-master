@@ -1,0 +1,25 @@
+# JARVIS MAX — Git attributes
+# Force LF partout (Linux containers + WSL)
+* text=auto eol=lf
+
+# Binaires — pas de conversion
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.db   binary
+*.db-shm binary
+*.db-wal binary
+*.hprof binary
+*.so   binary
+*.dylib binary
+*.dll  binary
+*.exe  binary
+*.zip  binary
+*.tar.gz binary
+*.whl  binary
+
+# Scripts batch Windows — CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf

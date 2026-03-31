@@ -1,0 +1,42 @@
+{
+  "playbook_id": "growth_experiment",
+  "name": "Growth Experiment",
+  "description": "Plan and structure a growth experiment cycle: analyze current state, identify channels, design experiments, and build an execution timeline.",
+  "version": "1.0",
+  "tier": "growth",
+  "goal_template": "Plan growth experiments for {product}",
+  "steps": [
+    {
+      "skill_id": "market_research.basic",
+      "name": "Market Context",
+      "description": "Understand market dynamics and growth potential"
+    },
+    {
+      "skill_id": "persona.basic",
+      "name": "Growth Persona",
+      "description": "Define the ideal user for growth targeting",
+      "depends_on": ["pb-growth_experiment-s1"]
+    },
+    {
+      "skill_id": "acquisition.basic",
+      "name": "Channel Analysis",
+      "description": "Identify and evaluate acquisition channels",
+      "depends_on": ["pb-growth_experiment-s2"]
+    },
+    {
+      "skill_id": "growth.plan",
+      "name": "Growth Plan",
+      "description": "Design growth model, experiments, and timeline",
+      "depends_on": ["pb-growth_experiment-s3"]
+    }
+  ],
+  "success_criteria": [
+    "Market context established",
+    "Growth persona defined",
+    "Channels identified and ranked",
+    "5+ experiments with ICE scores",
+    "12-week growth timeline"
+  ],
+  "tags": ["growth", "experiments", "channels", "retention"],
+  "estimated_duration_min": 15
+}

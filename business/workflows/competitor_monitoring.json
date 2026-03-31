@@ -1,0 +1,32 @@
+{
+  "template_id": "competitor_monitoring",
+  "name": "Competitor Monitoring Setup",
+  "description": "Research market landscape, identify competitors, and set up monitoring workflows.",
+  "goal": "Establish a competitor monitoring system",
+  "steps": [
+    {
+      "type": "business_action",
+      "id": "venture.research_workspace",
+      "name": "Research Competitive Landscape"
+    },
+    {
+      "type": "skill",
+      "id": "market_research.basic",
+      "name": "Deep Market Analysis"
+    },
+    {
+      "type": "business_action",
+      "id": "workflow.blueprint",
+      "name": "Design Monitoring Workflows"
+    }
+  ],
+  "skills_required": ["market_research.basic"],
+  "tools_required": [],
+  "expected_outputs": [
+    "Competitor dossier",
+    "Market analysis with trends",
+    "Monitoring workflow specs"
+  ],
+  "risk_level": "low",
+  "tags": ["competitor", "monitoring", "research"]
+}

@@ -1,0 +1,80 @@
+{
+  "id": "copywriting.basic",
+  "version": "1.0",
+  "name": "Copywriting",
+  "description": "Generate conversion-focused copy: headlines, value propositions, CTAs, social proof elements, and objection handlers for a product or offer.",
+  "domain": "copywriting",
+  "inputs": [
+    {
+      "name": "product",
+      "type": "string",
+      "required": true,
+      "description": "Product or service to write copy for"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience or persona"
+    },
+    {
+      "name": "tone",
+      "type": "string",
+      "required": false,
+      "description": "Desired tone (professional, casual, bold, empathetic)"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "headlines",
+      "type": "list",
+      "description": "5 headline variations: benefit-driven, curiosity, social proof, urgency, question"
+    },
+    {
+      "name": "value_proposition",
+      "type": "json",
+      "description": "Core value proposition with headline, subheadline, and supporting points"
+    },
+    {
+      "name": "ctas",
+      "type": "list",
+      "description": "5 call-to-action variations with context"
+    },
+    {
+      "name": "social_proof",
+      "type": "list",
+      "description": "3 social proof elements (testimonial templates, stat claims, authority signals)"
+    },
+    {
+      "name": "objection_handlers",
+      "type": "list",
+      "description": "Top 5 objections with reframing responses"
+    },
+    {
+      "name": "email_subject_lines",
+      "type": "list",
+      "description": "5 email subject lines for different campaign types"
+    }
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {
+      "name": "headline_variety",
+      "description": "Headlines use different persuasion angles",
+      "check_type": "completeness",
+      "threshold": 0.8
+    },
+    {
+      "name": "copy_specificity",
+      "description": "Copy is specific to the product, not generic",
+      "check_type": "coherence",
+      "threshold": 0.7
+    },
+    {
+      "name": "output_structure",
+      "check_type": "structure",
+      "threshold": 0.8
+    }
+  ],
+  "tags": ["copywriting", "marketing", "conversion", "tier3"]
+}

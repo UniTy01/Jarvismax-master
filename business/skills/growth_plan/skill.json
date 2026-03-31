@@ -1,0 +1,80 @@
+{
+  "id": "growth.plan",
+  "version": "1.0",
+  "name": "Growth Plan",
+  "description": "Design a structured growth plan: acquisition channels, retention strategy, metrics framework, experiment roadmap, and growth model.",
+  "domain": "growth",
+  "inputs": [
+    {
+      "name": "product",
+      "type": "string",
+      "required": true,
+      "description": "Product or service to grow"
+    },
+    {
+      "name": "current_state",
+      "type": "string",
+      "required": false,
+      "description": "Current metrics (users, revenue, conversion rates)"
+    },
+    {
+      "name": "target",
+      "type": "string",
+      "required": false,
+      "description": "Growth target (e.g., 10K users in 6 months)"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "growth_model",
+      "type": "json",
+      "description": "Growth engine type (viral, paid, content, sales) with rationale"
+    },
+    {
+      "name": "channels",
+      "type": "list",
+      "description": "Top 3-5 acquisition channels ranked by expected ROI"
+    },
+    {
+      "name": "retention_strategy",
+      "type": "json",
+      "description": "Retention tactics, activation milestones, and churn reduction"
+    },
+    {
+      "name": "metrics",
+      "type": "json",
+      "description": "North star metric + supporting metrics framework"
+    },
+    {
+      "name": "experiments",
+      "type": "list",
+      "description": "5 growth experiments prioritized by ICE score"
+    },
+    {
+      "name": "timeline",
+      "type": "list",
+      "description": "12-week growth roadmap with milestones"
+    }
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {
+      "name": "channels_prioritized",
+      "description": "Channels ranked with clear rationale",
+      "check_type": "completeness",
+      "threshold": 0.8
+    },
+    {
+      "name": "experiments_actionable",
+      "description": "Experiments are specific and time-bound",
+      "check_type": "coherence",
+      "threshold": 0.7
+    },
+    {
+      "name": "output_structure",
+      "check_type": "structure",
+      "threshold": 0.8
+    }
+  ],
+  "tags": ["growth", "marketing", "acquisition", "retention", "tier1"]
+}

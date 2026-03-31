@@ -1,0 +1,148 @@
+# ================================================================
+# JARVIS MAX — Kernel Architecture CI (Pass 32)
+# Runs on every push/PR to validate:
+#   1. K1 Rule — kernel never imports core/api/agents/tools
+#   2. Integration tests — all R1-R10 architectural rules
+#   3. New route imports — security_audit, kernel agents/adapter
+#   4. Agent bridge — KernelStatusAgent contract conformance
+# ================================================================
+
+name: Kernel Architecture CI
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "LICENSE"
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: kernel-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kernel-architecture:
+    name: Kernel Architecture Validation (R1–R10)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install structlog fastapi pydantic pydantic-settings uvicorn --quiet
+
+      # ── K1 Rule scan ──────────────────────────────────────────
+      - name: K1 Rule — kernel/ must not import core/api/agents/tools
+        run: |
+          python - <<'EOF'
+          import ast, sys
+          from pathlib import Path
+
+          KERNEL_ROOT = Path("kernel")
+          FORBIDDEN = ("core", "api", "agents", "tools")
+          violations = []
+
+          for pyfile in KERNEL_ROOT.rglob("*.py"):
+              try:
+                  tree = ast.parse(pyfile.read_text(encoding="utf-8"))
+              except SyntaxError as e:
+                  print(f"SYNTAX_ERROR: {pyfile}: {e}")
+                  sys.exit(1)
+
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.ImportFrom) and node.module:
+                      for banned in FORBIDDEN:
+                          if node.module == banned or node.module.startswith(f"{banned}."):
+                              violations.append(f"  {pyfile}:{node.lineno}: from {node.module}")
+                  elif isinstance(node, ast.Import):
+                      for alias in node.names:
+                          for banned in FORBIDDEN:
+                              if alias.name == banned or alias.name.startswith(f"{banned}."):
+                                  violations.append(f"  {pyfile}:{node.lineno}: import {alias.name}")
+
+          if violations:
+              print(f"❌ K1 VIOLATIONS ({len(violations)}):")
+              for v in violations:
+                  print(v)
+              sys.exit(1)
+          else:
+              import subprocess
+              count = subprocess.run(
+                  ["python", "-c", "import os; print(sum(1 for r,d,f in os.walk('kernel') for x in f if x.endswith('.py')))"],
+                  capture_output=True, text=True,
+              ).stdout.strip()
+              print(f"✅ K1 Rule — {count} kernel files scanned, 0 violations")
+          EOF
+
+      # ── security/ layer import ────────────────────────────────
+      - name: Security layer imports (R3/R10)
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from security import get_security_layer
+          from security.audit.trail import get_audit_trail
+          from security.policies.rules import get_policy_ruleset
+          layer = get_security_layer()
+          rules = layer.active_rules()
+          print(f'✅ SecurityLayer: {len(rules)} active rules')
+          "
+
+      # ── interfaces/ layer import ──────────────────────────────
+      - name: KernelAdapter imports (R8)
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from interfaces.kernel_adapter import KernelAdapter, AdapterResult, get_kernel_adapter
+          adapter = get_kernel_adapter()
+          status = adapter.status()
+          assert 'adapter' in status
+          print(f'✅ KernelAdapter: status={status}')
+          "
+
+      # ── KernelAgentContract conformance ───────────────────────
+      - name: KernelStatusAgent contract conformance (R7)
+        run: |
+          python -c "
+          import sys, asyncio; sys.path.insert(0, '.')
+          from kernel.contracts.agent import KernelAgentContract, get_agent_registry
+          from agents.kernel_bridge import KernelStatusAgent, build_and_register_kernel_agents
+          agent = KernelStatusAgent()
+          assert isinstance(agent, KernelAgentContract), 'Contract violation!'
+          health = asyncio.run(agent.health_check())
+          print(f'✅ KernelStatusAgent: conforms=True, health={health}')
+          registered = build_and_register_kernel_agents()
+          assert 'kernel-status-agent' in registered, f'Registration failed: {registered}'
+          print(f'✅ KernelAgentRegistry: registered={registered}')
+          "
+
+      # ── API routes importable ─────────────────────────────────
+      - name: New API routes importable (Pass 30/31)
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from api.routes.security_audit import router as sr
+          from api.routes.kernel import router as kr
+          sec_routes = [r.path for r in sr.routes]
+          agent_routes = [r.path for r in kr.routes if 'agents' in r.path or 'adapter' in r.path]
+          assert '/api/v3/security/rules' in sec_routes, f'Missing security/rules: {sec_routes}'
+          assert '/api/v3/security/audit' in sec_routes, f'Missing security/audit: {sec_routes}'
+          assert '/api/v3/kernel/agents' in agent_routes, f'Missing /agents: {agent_routes}'
+          assert '/api/v3/kernel/adapter/status' in agent_routes, f'Missing /adapter/status: {agent_routes}'
+          print(f'✅ security routes: {sec_routes}')
+          print(f'✅ kernel agent/adapter routes: {agent_routes}')
+          "
+
+      # ── Full integration test (R1–R10) ────────────────────────
+      - name: Integration tests — R1-R10 (31 tests)
+        run: |
+          python tests/test_integration_kernel_security_business.py

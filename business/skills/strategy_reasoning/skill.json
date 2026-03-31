@@ -1,0 +1,80 @@
+{
+  "id": "strategy.reasoning",
+  "version": "1.0",
+  "name": "Strategy Reasoning",
+  "description": "Structured strategic analysis: situation assessment, option generation, trade-off evaluation, recommendation with rationale and risk mitigation.",
+  "domain": "strategy",
+  "inputs": [
+    {
+      "name": "situation",
+      "type": "string",
+      "required": true,
+      "description": "Business situation, challenge, or decision to analyze"
+    },
+    {
+      "name": "constraints",
+      "type": "string",
+      "required": false,
+      "description": "Known constraints (budget, timeline, team, technology)"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": false,
+      "description": "Desired outcome or success criteria"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "situation_analysis",
+      "type": "json",
+      "description": "Structured assessment of current state, key factors, and dynamics"
+    },
+    {
+      "name": "options",
+      "type": "list",
+      "description": "3-5 strategic options with pros, cons, effort, and expected impact"
+    },
+    {
+      "name": "trade_offs",
+      "type": "list",
+      "description": "Key trade-offs between options with evaluation criteria"
+    },
+    {
+      "name": "recommendation",
+      "type": "json",
+      "description": "Recommended option with detailed rationale and confidence level"
+    },
+    {
+      "name": "risks",
+      "type": "list",
+      "description": "Top risks with mitigation strategies"
+    },
+    {
+      "name": "next_steps",
+      "type": "list",
+      "description": "Concrete next actions with owners and timelines"
+    }
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {
+      "name": "options_diverse",
+      "description": "At least 3 genuinely different strategic options",
+      "check_type": "completeness",
+      "threshold": 0.8
+    },
+    {
+      "name": "recommendation_justified",
+      "description": "Recommendation includes clear rationale tied to trade-offs",
+      "check_type": "coherence",
+      "threshold": 0.7
+    },
+    {
+      "name": "output_structure",
+      "check_type": "structure",
+      "threshold": 0.8
+    }
+  ],
+  "tags": ["strategy", "reasoning", "decision", "analysis", "tier1"]
+}

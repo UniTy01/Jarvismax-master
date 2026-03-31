@@ -1,0 +1,71 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run core tests (architecture + hardening + auth)
+        run: |
+          python -m pytest tests/test_beta_architecture.py tests/test_stabilization_final.py tests/test_hardening_safety.py tests/test_status_memory_consolidation.py -q --tb=short
+
+      - name: Run self-improvement tests (critical safety)
+        run: |
+          python -m pytest tests/test_self_improvement_execution.py tests/test_self_improvement_bridge.py tests/test_self_improvement_v3_integration.py -q --tb=short
+
+      - name: Run consolidation tests (routes + auth + security)
+        run: |
+          python -m pytest tests/test_consolidation.py -q --tb=short
+
+      - name: Run module tests (governance + manager + integrations)
+        run: |
+          python -m pytest tests/test_module_manager.py tests/test_module_governance.py tests/test_module_integrations.py -q --tb=short
+
+      - name: Run business tests (mission engine + finance)
+        run: |
+          python -m pytest tests/test_mission_engine.py tests/test_finance.py -q --tb=short
+
+      - name: Run cognitive + security tests (intelligence layer + guards)
+        run: |
+          python -m pytest tests/test_cognitive_upgrades.py tests/test_cognitive_integration.py tests/test_cognitive_security.py tests/test_superagi_patterns.py -q --tb=short
+
+      - name: Run critical wiring + MCP tests (runtime enforcement)
+        run: |
+          python -m pytest tests/test_critical_wiring.py tests/test_mcp_registry.py -q --tb=short
+
+      - name: Run auth enforcement tests (RBAC + session + denial)
+        run: |
+          python -m pytest tests/test_phase4_auth.py tests/test_devin_bugs.py -q --tb=short
+
+  deploy:
+    environment: VPS_HOST
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/Jarvismax
+            bash scripts/update.sh

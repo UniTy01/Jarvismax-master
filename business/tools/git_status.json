@@ -1,0 +1,24 @@
+{
+  "id": "git.status",
+  "name": "Git Status",
+  "description": "Run git status in the repository. Read-only, no side effects.",
+  "category": "git",
+  "risk_level": "low",
+  "requires_approval": false,
+  "required_secrets": [],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "path": {"type": "string", "description": "Repository path", "default": "."}
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {"type": "string"},
+      "branch": {"type": "string"}
+    }
+  },
+  "timeout": 10,
+  "tags": ["git", "read-only"]
+}

@@ -1,0 +1,23 @@
+# config/policy.yaml — Jarvis Policy Engine defaults
+#
+# Controls economic decision-making for action execution.
+# Modify values to adjust cost tolerance and approval thresholds.
+
+max_cost_per_mission: 2.00
+max_tokens_per_mission: 150000
+max_execution_time_seconds: 120
+
+# Score = (expected_value * success_probability) - estimated_cost
+# Actions with score below this require approval
+approval_threshold_score: 0.05
+
+# Actions with score above this are auto-approved
+auto_approve_threshold: 0.50
+
+risk_thresholds:
+  LOW:
+    max_cost: 0.10
+  MEDIUM:
+    max_cost: 0.50
+  HIGH:
+    requires_approval: true

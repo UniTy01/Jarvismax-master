@@ -1,0 +1,65 @@
+[
+  {
+    "input": {
+      "situation": "SaaS startup with 500 users, $10K MRR, considering whether to focus on enterprise sales or product-led growth",
+      "constraints": "3 engineers, $50K runway, 6 months",
+      "goal": "Reach $50K MRR within 12 months"
+    },
+    "output": {
+      "situation_analysis": {
+        "current_state": "Early traction with 500 users at $20 ARPU, indicating market fit but not yet at scale",
+        "key_factors": ["Low ARPU suggests self-serve users", "Small team limits simultaneous strategy execution", "Runway creates urgency for revenue growth"],
+        "unknowns": ["Enterprise willingness to pay", "Self-serve conversion rate ceiling", "Churn rate stability"]
+      },
+      "options": [
+        {
+          "name": "Product-Led Growth",
+          "approach": "Double down on self-serve funnel: improve onboarding, add viral features, optimize conversion.",
+          "pros": ["Scalable without headcount", "Data-driven iteration", "Compounds over time"],
+          "cons": ["Slow at first", "Low ARPU persists", "Requires engineering focus"],
+          "effort": "medium",
+          "impact": "high",
+          "timeline": "3-6 months to see results"
+        },
+        {
+          "name": "Enterprise Outbound",
+          "approach": "Hire 1 AE, target 10-50 enterprise accounts with custom pricing.",
+          "pros": ["10-50x ARPU uplift", "Faster revenue per deal", "Market validation"],
+          "cons": ["Expensive hire", "Long sales cycles", "Product may need customization"],
+          "effort": "high",
+          "impact": "high",
+          "timeline": "3-9 months for first deals"
+        },
+        {
+          "name": "Hybrid: PLG + Outbound Assist",
+          "approach": "Keep self-serve as base, add light outbound for top 10% prospects.",
+          "pros": ["Diversified revenue", "Lower risk", "Learn both channels"],
+          "cons": ["Splits focus", "Neither channel gets full attention", "Slower learning"],
+          "effort": "medium",
+          "impact": "medium",
+          "timeline": "2-4 months incremental"
+        }
+      ],
+      "trade_offs": [
+        {"dimension": "Speed vs Scale", "analysis": "Enterprise is faster per-deal but PLG scales better long-term"},
+        {"dimension": "Cost vs Control", "analysis": "PLG is cheaper but enterprise gives revenue predictability"},
+        {"dimension": "Focus vs Diversification", "analysis": "Single strategy learns faster but carries more risk"}
+      ],
+      "recommendation": {
+        "option": "Product-Led Growth",
+        "rationale": "With 3 engineers and limited runway, PLG maximizes the team's strength (product) while avoiding the cost and risk of enterprise sales. The existing 500-user base provides a foundation to optimize.",
+        "confidence": "medium",
+        "revisit_if": "If self-serve conversion doesn't improve 2x within 3 months, pivot to hybrid."
+      },
+      "risks": [
+        {"risk": "PLG growth too slow for runway", "likelihood": "medium", "impact": "high", "mitigation": "Set 3-month checkpoint, pre-identify 5 enterprise targets as fallback"},
+        {"risk": "Churn increases during product changes", "likelihood": "low", "impact": "medium", "mitigation": "A/B test all onboarding changes, maintain current flow as control"}
+      ],
+      "next_steps": [
+        {"action": "Analyze current funnel conversion rates", "timeline": "Week 1"},
+        {"action": "Identify top 3 onboarding friction points", "timeline": "Week 1-2"},
+        {"action": "Build and launch first onboarding improvement", "timeline": "Week 3-4"}
+      ]
+    }
+  }
+]

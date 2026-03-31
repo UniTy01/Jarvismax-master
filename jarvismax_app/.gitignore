@@ -1,0 +1,38 @@
+# Flutter / Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Build outputs
+build/
+
+# Android JVM heap dumps
+android/*.hprof
+android/java_*.hprof
+
+# Android local config
+android/local.properties
+android/.gradle/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# macOS
+macos/Pods/
+macos/.symlinks/
+
+# pubspec lock (keep for reproducible builds — comment to ignore)
+# pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

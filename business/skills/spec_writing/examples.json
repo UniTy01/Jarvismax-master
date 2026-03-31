@@ -1,0 +1,54 @@
+[
+  {
+    "input": {
+      "feature": "Real-time notification system for a project management SaaS",
+      "context": "FastAPI backend, PostgreSQL, React frontend, 5K DAU",
+      "requirements": "Sub-second delivery, read receipts, per-user preferences"
+    },
+    "output": {
+      "problem_statement": {
+        "problem": "Users miss important project updates because notifications are email-only with 5-15 minute delay",
+        "affected": "All active users (5K DAU), especially team leads managing multiple projects",
+        "current_behavior": "Email notifications on task assignment and due date, batched every 15 minutes",
+        "desired_behavior": "Real-time in-app notifications with sub-second delivery, plus configurable email digest",
+        "scope_in": ["In-app notifications", "WebSocket delivery", "Preference management", "Read tracking"],
+        "scope_out": ["Mobile push (phase 2)", "SMS alerts", "Notification templates UI"],
+        "success_criteria": "95% of notifications delivered in < 1s, 30% reduction in missed deadlines"
+      },
+      "solution_design": {
+        "approach": "WebSocket-based notification system with PostgreSQL LISTEN/NOTIFY for fan-out and Redis for presence tracking. Client connects via WebSocket on page load, receives typed notification events.",
+        "alternatives_rejected": [
+          {"alternative": "Polling every 5s", "reason": "Too much server load at scale, not truly real-time"},
+          {"alternative": "Firebase Cloud Messaging", "reason": "External dependency, data leaves our infrastructure"}
+        ],
+        "decisions": [
+          {"decision": "WebSocket over SSE", "trade_off": "More complex but bidirectional (needed for read receipts)", "revisit_if": "If mobile needs push, SSE might be simpler"},
+          {"decision": "PostgreSQL LISTEN/NOTIFY over Redis Pub/Sub", "trade_off": "Fewer moving parts but 1K/s throughput ceiling", "revisit_if": "If DAU exceeds 50K"}
+        ]
+      },
+      "api_contracts": [
+        {"method": "GET", "path": "/api/v1/notifications", "description": "List notifications", "request": {"query": {"unread_only": "bool", "limit": "int(50)", "offset": "int(0)"}}, "response": {"items": "[Notification]", "unread_count": "int"}},
+        {"method": "POST", "path": "/api/v1/notifications/{id}/read", "description": "Mark as read", "request": {}, "response": {"ok": "bool"}},
+        {"method": "GET", "path": "/api/v1/notifications/preferences", "description": "Get preferences", "request": {}, "response": {"channels": "{type: enabled}"}},
+        {"method": "PUT", "path": "/api/v1/notifications/preferences", "description": "Update preferences", "request": {"body": {"channels": "{type: enabled}"}}, "response": {"ok": "bool"}}
+      ],
+      "data_model": [
+        {"entity": "Notification", "fields": ["id (UUID)", "user_id (FK)", "type (enum)", "title (str)", "body (str)", "data (jsonb)", "read_at (timestamp|null)", "created_at (timestamp)"], "indexes": ["user_id + read_at", "user_id + created_at DESC"]},
+        {"entity": "NotificationPreference", "fields": ["user_id (FK, PK)", "in_app (bool)", "email_digest (enum: off/daily/weekly)", "muted_types (text[])"], "storage": "PostgreSQL, same DB as users"}
+      ],
+      "edge_cases": [
+        {"case": "User has 2+ tabs open", "handling": "All tabs receive via shared WebSocket, read sync via broadcast"},
+        {"case": "WebSocket disconnects", "handling": "Client auto-reconnects with last_seen_id, server replays missed notifications"},
+        {"case": "Notification storm (50+ in 1 minute)", "handling": "Group by type, show '12 new task assignments' instead of 12 individual"},
+        {"case": "User preference update during active session", "handling": "Preference change takes effect immediately via WebSocket config update"},
+        {"case": "Database LISTEN/NOTIFY lag", "handling": "Fallback polling every 30s as safety net, log if triggered"}
+      ],
+      "implementation_plan": [
+        {"phase": 1, "scope": "Core notification model + REST API", "effort": "3 days", "deliverable": "CRUD endpoints, notification table", "dependencies": "none"},
+        {"phase": 2, "scope": "WebSocket delivery", "effort": "5 days", "deliverable": "Real-time push to connected clients", "dependencies": "Phase 1"},
+        {"phase": 3, "scope": "Preferences + read tracking", "effort": "3 days", "deliverable": "User can configure and mark read", "dependencies": "Phase 1"},
+        {"phase": 4, "scope": "Integration + testing", "effort": "4 days", "deliverable": "Wired into task/comment/deadline events, load tested", "dependencies": "Phase 2+3"}
+      ]
+    }
+  }
+]

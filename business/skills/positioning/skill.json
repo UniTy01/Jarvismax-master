@@ -1,0 +1,80 @@
+{
+  "id": "positioning.basic",
+  "version": "1.0",
+  "name": "Product Positioning",
+  "description": "Define clear market positioning: category, differentiation, messaging framework, competitive wedge, and positioning statement.",
+  "domain": "positioning",
+  "inputs": [
+    {
+      "name": "product",
+      "type": "string",
+      "required": true,
+      "description": "Product or service to position"
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "required": false,
+      "description": "Target market or segment"
+    },
+    {
+      "name": "competitors",
+      "type": "string",
+      "required": false,
+      "description": "Known competitors or alternatives"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "category",
+      "type": "json",
+      "description": "Market category definition and why this category"
+    },
+    {
+      "name": "target_customer",
+      "type": "json",
+      "description": "Ideal customer profile with qualifying criteria"
+    },
+    {
+      "name": "competitive_alternatives",
+      "type": "list",
+      "description": "What customers use today instead, with weaknesses"
+    },
+    {
+      "name": "unique_attributes",
+      "type": "list",
+      "description": "Capabilities only this product has"
+    },
+    {
+      "name": "value_themes",
+      "type": "list",
+      "description": "2-3 value themes that map attributes to customer needs"
+    },
+    {
+      "name": "positioning_statement",
+      "type": "string",
+      "description": "For [target], [product] is the [category] that [key benefit] unlike [alternatives] because [unique attribute]"
+    }
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {
+      "name": "positioning_specific",
+      "description": "Positioning is specific to this product, not generic",
+      "check_type": "coherence",
+      "threshold": 0.8
+    },
+    {
+      "name": "alternatives_real",
+      "description": "Competitive alternatives are real, not straw men",
+      "check_type": "completeness",
+      "threshold": 0.7
+    },
+    {
+      "name": "output_structure",
+      "check_type": "structure",
+      "threshold": 0.8
+    }
+  ],
+  "tags": ["positioning", "messaging", "strategy", "tier2"]
+}

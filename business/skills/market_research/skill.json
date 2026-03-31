@@ -1,0 +1,27 @@
+{
+  "id": "market_research.basic",
+  "version": "1.0",
+  "name": "Market Research",
+  "description": "Structured market analysis: TAM/SAM/SOM estimation, problem identification, opportunity scoring, trend detection, and risk signals.",
+  "domain": "market_research",
+  "inputs": [
+    {"name": "sector", "type": "string", "required": true, "description": "Target sector or market to analyze"},
+    {"name": "region", "type": "string", "required": false, "description": "Geographic focus", "default": "global"},
+    {"name": "budget_range", "type": "string", "required": false, "description": "Target customer budget range"}
+  ],
+  "outputs": [
+    {"name": "tam", "type": "json", "description": "Total Addressable Market estimate with reasoning"},
+    {"name": "sam", "type": "json", "description": "Serviceable Addressable Market estimate"},
+    {"name": "som", "type": "json", "description": "Serviceable Obtainable Market estimate"},
+    {"name": "problems", "type": "list", "description": "Top 5 identified problems with severity scores"},
+    {"name": "opportunities", "type": "list", "description": "Scored opportunities (1-10) with justification"},
+    {"name": "trends", "type": "list", "description": "Active market trends with direction indicators"},
+    {"name": "risks", "type": "list", "description": "Risk signals with likelihood and impact"}
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {"name": "market_sizing_present", "check_type": "completeness", "threshold": 0.7},
+    {"name": "output_structure_valid", "check_type": "structure", "threshold": 0.8}
+  ],
+  "tags": ["market", "research", "sizing", "opportunity"]
+}

@@ -1,0 +1,40 @@
+[
+  {
+    "input": {
+      "product": "AI meeting notes tool that generates action items and follow-ups",
+      "market": "Remote-first engineering teams",
+      "competitors": "Otter.ai, Fireflies.ai, manual note-taking"
+    },
+    "output": {
+      "category": {
+        "name": "AI Meeting Intelligence",
+        "rationale": "Positions beyond transcription (commodity) into intelligence (premium). Customers understand 'meeting tool' but 'intelligence' signals higher value than 'notes'.",
+        "type": "sub_category"
+      },
+      "target_customer": {
+        "role": "Engineering Manager",
+        "company_size": "20-200 employees",
+        "pain": "Losing decisions and action items across 10+ meetings/week",
+        "trigger": "Missed a commitment made in a meeting, causing project delay",
+        "disqualified": "Solo founders (too few meetings), enterprise (need on-prem)"
+      },
+      "competitive_alternatives": [
+        {"alternative": "Otter.ai", "weakness": "Transcribes everything but doesn't extract decisions or track follow-ups"},
+        {"alternative": "Fireflies.ai", "weakness": "Good recording but action items require manual review"},
+        {"alternative": "Manual notes", "weakness": "Inconsistent, depends on who takes notes, often lost"},
+        {"alternative": "Do nothing", "weakness": "Decisions get lost, same discussions repeated, accountability unclear"}
+      ],
+      "unique_attributes": [
+        {"attribute": "Automatic action item extraction with assignee detection", "defensibility": "Trained on 100K+ engineering meetings"},
+        {"attribute": "Follow-up tracking across meetings (detects unresolved items)", "defensibility": "Requires meeting graph, not just transcription"},
+        {"attribute": "Integration with Jira/Linear to create tickets from decisions", "defensibility": "Deep integration, not just webhook"}
+      ],
+      "value_themes": [
+        {"theme": "Never lose a decision", "attributes": ["action item extraction", "follow-up tracking"]},
+        {"theme": "Meetings that drive results", "attributes": ["Jira integration", "assignee detection"]},
+        {"theme": "Zero effort accountability", "attributes": ["automatic", "cross-meeting tracking"]}
+      ],
+      "positioning_statement": "For engineering managers at remote-first companies, MeetingMind is the AI meeting intelligence tool that turns every meeting into tracked action items, unlike Otter and Fireflies which only transcribe, because it understands engineering workflows and automatically creates tickets from decisions."
+    }
+  }
+]

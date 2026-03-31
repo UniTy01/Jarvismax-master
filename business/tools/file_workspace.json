@@ -1,0 +1,26 @@
+{
+  "id": "file.workspace.write",
+  "name": "Workspace File Writer",
+  "description": "Write a file to the JarvisMax workspace directory. Scoped to workspace/ only.",
+  "category": "file",
+  "risk_level": "low",
+  "requires_approval": false,
+  "required_secrets": [],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "path": {"type": "string", "description": "Relative path within workspace/"},
+      "content": {"type": "string", "description": "File content to write"}
+    },
+    "required": ["path", "content"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "written": {"type": "boolean"},
+      "path": {"type": "string"}
+    }
+  },
+  "timeout": 10,
+  "tags": ["file", "workspace"]
+}

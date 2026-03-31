@@ -1,0 +1,14 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+data/
+mcp/hexstrike-ai/
+jarvismax_app/
+*.apk
+node_modules/
+.env
+.env.local

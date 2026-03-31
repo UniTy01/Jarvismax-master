@@ -1,0 +1,49 @@
+[
+  {
+    "input": {
+      "product": "Developer productivity dashboard SaaS",
+      "current_state": "200 users, $2K MRR, 5% trial-to-paid conversion",
+      "target": "1000 users, $15K MRR in 6 months"
+    },
+    "output": {
+      "growth_model": {
+        "primary": "content_seo",
+        "secondary": "product_led",
+        "rationale": "Developers search for productivity solutions. Content attracts qualified traffic, free tier converts self-serve. Sales not viable at this ACV ($15/mo)."
+      },
+      "channels": [
+        {"channel": "SEO/Blog", "effort": "medium", "cost": "low", "timeline": "3-6 months", "volume": "high", "roi_rank": 1, "rationale": "Developer tools content has strong search intent"},
+        {"channel": "Dev community (HN, Reddit, Discord)", "effort": "medium", "cost": "low", "timeline": "1-3 months", "volume": "medium", "roi_rank": 2, "rationale": "Authentic community presence drives qualified leads"},
+        {"channel": "Product Hunt / launches", "effort": "low", "cost": "low", "timeline": "1 month", "volume": "spike", "roi_rank": 3, "rationale": "One-time spike but builds backlinks and awareness"},
+        {"channel": "GitHub integrations", "effort": "high", "cost": "low", "timeline": "2-4 months", "volume": "medium", "roi_rank": 4, "rationale": "Distribution through existing developer workflow"}
+      ],
+      "retention_strategy": {
+        "activation_milestone": "User connects GitHub repo and sees first productivity report",
+        "aha_moment": "Seeing which PRs were blocked and for how long",
+        "onboarding": ["Connect repo in 1 click", "Auto-generate first report", "Email report summary"],
+        "retention_loops": ["Weekly email digest", "Slack notification on unusual patterns", "Monthly team benchmarks"],
+        "churn_signals": ["No login in 7 days", "Stopped connecting new repos", "Team size decreased"]
+      },
+      "metrics": {
+        "north_star": "Weekly active teams viewing reports",
+        "input_metrics": ["New signups/week", "Repo connections/signup", "Report views/team"],
+        "output_metrics": ["MRR", "Trial-to-paid rate", "Net revenue retention"],
+        "health_metrics": ["Support tickets/user", "Page load time", "Data freshness"]
+      },
+      "experiments": [
+        {"name": "Onboarding email sequence", "hypothesis": "5-day drip will increase activation by 20%", "metric": "activation_rate", "ice_score": 24, "timeline": "2 weeks"},
+        {"name": "Free public team dashboard", "hypothesis": "Public dashboards create viral loops", "metric": "organic_signups", "ice_score": 21, "timeline": "3 weeks"},
+        {"name": "SEO: 10 comparison articles", "hypothesis": "Comparison content captures high-intent searches", "metric": "organic_traffic", "ice_score": 18, "timeline": "4 weeks"},
+        {"name": "Slack bot for daily standups", "hypothesis": "Daily touchpoint increases retention 15%", "metric": "weekly_active_teams", "ice_score": 16, "timeline": "3 weeks"},
+        {"name": "Referral program ($5 credit)", "hypothesis": "10% of active users refer at least 1 team", "metric": "referral_signups", "ice_score": 14, "timeline": "2 weeks"}
+      ],
+      "timeline": [
+        {"weeks": "1-2", "focus": "Foundation", "actions": ["Set up analytics", "Establish baseline metrics", "Map current funnel"]},
+        {"weeks": "3-4", "focus": "Quick wins", "actions": ["Launch onboarding emails", "Write 3 comparison articles", "Post on HN"]},
+        {"weeks": "5-8", "focus": "Channel testing", "actions": ["Publish 10 SEO articles", "Build Slack bot", "Launch referral program"]},
+        {"weeks": "9-10", "focus": "Scale winners", "actions": ["Double down on top channel", "Optimize onboarding", "A/B test pricing"]},
+        {"weeks": "11-12", "focus": "Review", "actions": ["Analyze all experiments", "Plan Q2", "Set new targets"]}
+      ]
+    }
+  }
+]

@@ -1,0 +1,54 @@
+{
+  "playbook_id": "product_creation",
+  "name": "Product Creation",
+  "description": "Full product creation pipeline: research, persona, offer design, pricing, MVP spec, and technical specification.",
+  "version": "1.0",
+  "tier": "business",
+  "goal_template": "Create a product for {sector}",
+  "steps": [
+    {
+      "skill_id": "market_research.basic",
+      "name": "Market Research",
+      "description": "Validate market opportunity and size"
+    },
+    {
+      "skill_id": "persona.basic",
+      "name": "Customer Persona",
+      "description": "Define target customer profile",
+      "depends_on": ["pb-product_creation-s1"]
+    },
+    {
+      "skill_id": "offer_design.basic",
+      "name": "Offer Design",
+      "description": "Design the product offer and tiers",
+      "depends_on": ["pb-product_creation-s2"]
+    },
+    {
+      "skill_id": "pricing.strategy",
+      "name": "Pricing Strategy",
+      "description": "Define pricing model and price points",
+      "depends_on": ["pb-product_creation-s3"]
+    },
+    {
+      "skill_id": "saas_scope.basic",
+      "name": "MVP Scope",
+      "description": "Scope minimum viable product features",
+      "depends_on": ["pb-product_creation-s3"]
+    },
+    {
+      "skill_id": "spec.writing",
+      "name": "Technical Spec",
+      "description": "Write technical specification for MVP",
+      "depends_on": ["pb-product_creation-s5"]
+    }
+  ],
+  "success_criteria": [
+    "Validated market opportunity",
+    "Clear customer persona",
+    "Structured offer with pricing",
+    "Scoped MVP features",
+    "Technical spec ready for implementation"
+  ],
+  "tags": ["product", "creation", "mvp", "end-to-end"],
+  "estimated_duration_min": 25
+}

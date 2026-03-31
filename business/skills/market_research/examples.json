@@ -1,0 +1,23 @@
+[
+  {
+    "input": {"sector": "AI-powered customer support for e-commerce", "region": "North America"},
+    "output": {
+      "tam": {"value": "$12B", "methodology": "Global customer service software market", "source": "Gartner 2024"},
+      "sam": {"value": "$3.2B", "methodology": "E-commerce segment, NA only, AI-enabled"},
+      "som": {"value": "$15M", "methodology": "0.5% capture in year 1 with focused niche"},
+      "problems": [
+        {"problem": "Response time too slow during peak hours", "severity": 9, "frequency": "daily"},
+        {"problem": "Inconsistent answer quality across agents", "severity": 7, "frequency": "daily"}
+      ],
+      "opportunities": [
+        {"title": "AI-first support for Shopify stores", "score": 8, "justification": "Large market, fragmented competition, strong willingness to pay"}
+      ],
+      "trends": [
+        {"trend": "LLM cost reduction enabling SMB AI adoption", "direction": "accelerating", "timeline": "immediate"}
+      ],
+      "risks": [
+        {"risk": "Platform dependency (Shopify API changes)", "likelihood": "medium", "impact": "high"}
+      ]
+    }
+  }
+]

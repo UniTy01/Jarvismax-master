@@ -1,0 +1,41 @@
+{
+  "playbook_id": "landing_page",
+  "name": "Landing Page",
+  "description": "Design a complete high-conversion landing page: positioning, copy, structure, and conversion optimization.",
+  "version": "1.0",
+  "tier": "growth",
+  "goal_template": "Design a landing page for {product}",
+  "steps": [
+    {
+      "skill_id": "positioning.basic",
+      "name": "Positioning",
+      "description": "Define market positioning and messaging framework"
+    },
+    {
+      "skill_id": "copywriting.basic",
+      "name": "Conversion Copy",
+      "description": "Generate headlines, CTAs, and objection handlers",
+      "depends_on": ["pb-landing_page-s1"]
+    },
+    {
+      "skill_id": "landing.structure",
+      "name": "Page Structure",
+      "description": "Design page sections, layout, and CTA placement",
+      "depends_on": ["pb-landing_page-s2"]
+    },
+    {
+      "skill_id": "funnel.design",
+      "name": "Funnel Design",
+      "description": "Design the acquisition funnel around the landing page",
+      "depends_on": ["pb-landing_page-s3"]
+    }
+  ],
+  "success_criteria": [
+    "Clear positioning statement",
+    "5+ headline variations",
+    "Complete page structure with AIDA flow",
+    "Funnel design with conversion stages"
+  ],
+  "tags": ["landing-page", "copy", "conversion", "growth"],
+  "estimated_duration_min": 15
+}

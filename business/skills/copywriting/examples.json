@@ -1,0 +1,53 @@
+[
+  {
+    "input": {
+      "product": "AI-powered customer support chatbot for Shopify stores",
+      "audience": "Shopify store owners doing $10K-$100K/month revenue",
+      "tone": "professional but friendly"
+    },
+    "output": {
+      "headlines": [
+        {"angle": "benefit", "text": "Answer Every Customer Question Instantly, 24/7"},
+        {"angle": "curiosity", "text": "Why Top Shopify Stores Never Miss a Support Ticket"},
+        {"angle": "social_proof", "text": "Trusted by 2,000+ Shopify Stores to Handle Support"},
+        {"angle": "urgency", "text": "Stop Losing Sales to Unanswered Questions Tonight"},
+        {"angle": "question", "text": "What If Your Store Could Support Itself?"}
+      ],
+      "value_proposition": {
+        "headline": "Customer Support That Sells While You Sleep",
+        "subheadline": "AI chatbot trained on your products that answers questions, resolves issues, and converts visitors — without hiring another agent.",
+        "supporting_points": [
+          "Resolves 80% of tickets automatically",
+          "Trained on YOUR product catalog in minutes",
+          "Increases conversion by answering pre-sale questions instantly"
+        ]
+      },
+      "ctas": [
+        {"type": "primary", "text": "Start Your Free Trial", "context": "hero section"},
+        {"type": "low_commitment", "text": "See It In Action", "context": "demo section"},
+        {"type": "urgency", "text": "Get 50% Off This Week Only", "context": "pricing page"},
+        {"type": "social", "text": "Join 2,000+ Stores", "context": "footer"},
+        {"type": "personal", "text": "Yes, I Want Faster Support", "context": "email CTA"}
+      ],
+      "social_proof": [
+        {"type": "testimonial", "text": "'Cut our response time from 4 hours to 30 seconds' — Sarah, BrightPets.com"},
+        {"type": "stat", "text": "80% of tickets resolved without human intervention"},
+        {"type": "authority", "text": "Built on GPT-4, trusted by Shopify Plus stores"}
+      ],
+      "objection_handlers": [
+        {"objection": "AI can't handle my complex products", "response": "It trains on YOUR catalog — product descriptions, FAQs, past tickets. It knows your products as well as your best agent."},
+        {"objection": "What if it gives wrong answers?", "response": "Confidence thresholds ensure uncertain questions get routed to your team. You approve answers before they go live."},
+        {"objection": "I already have a help desk", "response": "This plugs into your existing setup. It handles the 80% of repetitive questions so your team focuses on the 20% that matter."},
+        {"objection": "It's too expensive", "response": "At $49/mo, it costs less than 1 hour of a support agent's time — and works 24/7."},
+        {"objection": "Setup is too complicated", "response": "Connect your Shopify store, point it at your FAQ, and it's live in under 10 minutes."}
+      ],
+      "email_subject_lines": [
+        {"type": "cold", "text": "Your store answered 47 questions while you slept"},
+        {"type": "followup", "text": "Quick question about your support workflow"},
+        {"type": "nurture", "text": "3 ways AI support increases Shopify revenue"},
+        {"type": "conversion", "text": "Last day: 50% off AI support for your store"},
+        {"type": "reengagement", "text": "Your customers are still waiting..."}
+      ]
+    }
+  }
+]

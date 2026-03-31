@@ -1,0 +1,47 @@
+{
+  "playbook_id": "offer_design",
+  "name": "Offer Design",
+  "description": "Design a complete product offer: value proposition, offer structure, pricing, and positioning — starting from customer understanding.",
+  "version": "1.0",
+  "tier": "business",
+  "goal_template": "Design a compelling offer for {product}",
+  "steps": [
+    {
+      "skill_id": "persona.basic",
+      "name": "Customer Understanding",
+      "description": "Build persona to ground the offer in real customer needs"
+    },
+    {
+      "skill_id": "value_proposition.design",
+      "name": "Value Proposition",
+      "description": "Design the core value proposition",
+      "depends_on": ["pb-offer_design-s1"]
+    },
+    {
+      "skill_id": "offer_design.basic",
+      "name": "Offer Structure",
+      "description": "Design offer tiers, features, and delivery model",
+      "depends_on": ["pb-offer_design-s2"]
+    },
+    {
+      "skill_id": "pricing.strategy",
+      "name": "Pricing",
+      "description": "Set pricing model and price points",
+      "depends_on": ["pb-offer_design-s3"]
+    },
+    {
+      "skill_id": "positioning.basic",
+      "name": "Positioning",
+      "description": "Position the offer in the competitive landscape",
+      "depends_on": ["pb-offer_design-s3"]
+    }
+  ],
+  "success_criteria": [
+    "Customer-grounded value proposition",
+    "Structured offer with clear tiers",
+    "Justified pricing model",
+    "Defensible market positioning"
+  ],
+  "tags": ["offer", "value-proposition", "pricing", "positioning"],
+  "estimated_duration_min": 15
+}

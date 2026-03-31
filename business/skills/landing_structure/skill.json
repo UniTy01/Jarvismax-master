@@ -1,0 +1,75 @@
+{
+  "id": "landing.structure",
+  "version": "1.0",
+  "name": "Landing Page Structure",
+  "description": "Design a high-conversion landing page structure: section flow, content blocks, CTA placement, social proof strategy, and responsive layout guidance.",
+  "domain": "landing_page",
+  "inputs": [
+    {
+      "name": "product",
+      "type": "string",
+      "required": true,
+      "description": "Product or service the landing page is for"
+    },
+    {
+      "name": "goal",
+      "type": "string",
+      "required": false,
+      "description": "Primary conversion goal (signup, purchase, demo, waitlist)"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "required": false,
+      "description": "Target audience for the page"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "page_structure",
+      "type": "list",
+      "description": "Ordered list of page sections with purpose and content guidance"
+    },
+    {
+      "name": "hero_section",
+      "type": "json",
+      "description": "Hero section design: headline, subheadline, CTA, visual guidance"
+    },
+    {
+      "name": "social_proof_strategy",
+      "type": "json",
+      "description": "Where and how to use social proof throughout the page"
+    },
+    {
+      "name": "cta_strategy",
+      "type": "json",
+      "description": "CTA placement, types, and progression through the page"
+    },
+    {
+      "name": "objection_flow",
+      "type": "list",
+      "description": "How the page addresses objections in sequence"
+    }
+  ],
+  "dependencies": [],
+  "quality_checks": [
+    {
+      "name": "section_completeness",
+      "description": "All critical page sections present",
+      "check_type": "completeness",
+      "threshold": 0.8
+    },
+    {
+      "name": "conversion_logic",
+      "description": "Page follows attention → interest → desire → action flow",
+      "check_type": "coherence",
+      "threshold": 0.7
+    },
+    {
+      "name": "output_structure",
+      "check_type": "structure",
+      "threshold": 0.8
+    }
+  ],
+  "tags": ["landing-page", "conversion", "design", "tier3"]
+}
