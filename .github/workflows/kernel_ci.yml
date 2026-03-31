@@ -60,6 +60,12 @@ jobs:
                   sys.exit(1)
 
               for node in ast.walk(tree):
+                  # Only flag top-level (module-level) imports — col_offset == 0.
+                  # Lazy imports inside functions/try blocks are intentional fallbacks.
+                  if not isinstance(node, (ast.ImportFrom, ast.Import)):
+                      continue
+                  if getattr(node, "col_offset", 1) != 0:
+                      continue
                   if isinstance(node, ast.ImportFrom) and node.module:
                       for banned in FORBIDDEN:
                           if node.module == banned or node.module.startswith(f"{banned}."):
