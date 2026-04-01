@@ -116,3 +116,7 @@ archive/legacy_apks/
 .env.production
 **/.cxx/
 /data/
+  
+# -- Qdrant runtime data --------------------------------  
+storage/  
+.qdrant-initialized  
