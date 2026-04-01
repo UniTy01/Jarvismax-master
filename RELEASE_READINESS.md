@@ -1,5 +1,5 @@
 # RELEASE_READINESS.md — Jarvis Max
-_Last updated: 2026-04-01 — Backend freeze complete (Cycles 8–14)_
+_Last updated: 2026-04-01 — Backend stable, pre-freeze validation pending (Cycles 8–15)_
 
 This document answers the question: **"What is actually working, what is partial, and what is not ready?"**
 It is updated after every cycle. Maturity inflation is forbidden.
@@ -41,8 +41,9 @@ python main.py
 | Performance evidence loop: outcomes recorded to model_performance.json | Added Cycle 11 |
 | Model catalog auto-refresh at startup if stale >24h | Added Cycle 11 |
 | Mobile app: canonical v3 endpoints (api_service.dart migrated) | Done Cycle 10 |
-| 37 regression tests protecting terminal state + persistence | All green |
+| 95 regression tests: terminal state + persistence + planner + SI boundary | All green, Cycle 15 |
 | Smoke test CI gate: auto-skips without --run-infra-tests | Added Cycle 11 |
+| Performance evidence: model_id from MODEL_STRATEGY env (not agent names) | Fixed Cycle 15 |
 
 ---
 
@@ -110,7 +111,7 @@ The cyber layer (`api/routes/security_audit.py`, `vault.py`, `core/cyber/`) incl
 - Command ready: `docker compose -f docker-compose.test.yml up --build && bash scripts/verify_boot.sh`
 
 ### CI/CD
-- ✅ `.github/workflows/ci.yml` added (Cycle 13): `unit-tests` job (37 tests, every push, no secrets) + `integration-tests` job (Qdrant container, secrets-gated, schedule/manual)
+- ✅ `.github/workflows/ci.yml` updated (Cycle 15): `unit-tests` job now **95 tests** (every push, no secrets) + `integration-tests` job (Qdrant container, secrets-gated, schedule/manual)
 - Integration test CI gate in place (`--run-infra-tests` skip pattern)
 
 ---
@@ -164,17 +165,45 @@ This is the product the backend is built for. Everything else is upside.
 
 ---
 
+## Backend Freeze Status (2026-04-01)
+
+The backend is **stable, coherent, and ready for external validation.**
+It is NOT yet declared frozen. Three items must be resolved or explicitly deferred before freeze:
+
+| # | Item | Current state | Risk if deferred |
+|---|------|--------------|-----------------|
+| 1 | **Docker live boot proof** (KL-003) | Static alignment complete; actual boot not run in this environment | Medium — Dockerfile bugs could exist that static analysis missed |
+| 2 | **Integration test run against live stack** (KL-006) | 95 unit tests green; full `pytest --run-infra-tests` never run end-to-end | Medium — integration tests may surface real bugs (Postgres schema, Qdrant indexing, auth edge cases) |
+| 3 | **WAITING_APPROVAL post-restart fix** (KL-008) | Documented gap — missions in `WAITING_APPROVAL` cannot auto-resume after restart; orphaned state | Low — narrow edge case, operator can re-submit; not a data loss risk |
+
+**Decision point:** Items 1 and 2 require a machine with Docker and a valid LLM API key.
+Item 3 is a known trade-off suitable for productization backlog (Track 3).
+
+Once items 1 and 2 are verified (or explicitly deferred with signed-off risk), the backend is frozen.
+
+---
+
 ## Deployment Checklist (for production)
 
+**Freeze pre-requisites (must complete before declaring backend frozen):**
+- [ ] **KL-003**: Run `docker compose -f docker-compose.test.yml up --build && bash scripts/verify_boot.sh` on a machine with Docker — confirm exit 0
+- [ ] **KL-006**: Run `pytest --run-infra-tests` against live Docker stack — triage failures, fix real bugs
+
+**Known deferred (low-risk, backlog):**
+- [ ] **KL-008**: `WAITING_APPROVAL` post-restart gap — workaround = re-submit; fix in productization backlog
+
+**Resolved (already done):**
 - [x] KL-001 resolved: invalid key → FAILED (not ghost-DONE) ✅
 - [x] KL-002 resolved: canonical missions persist across restart ✅
+- [x] KL-004 resolved: SI test infrastructure (PatchRunner rename) ✅
+- [x] KL-005 resolved: lens-reviewer gets complete context via priority waves ✅
 - [x] KL-007 resolved: mobile app uses canonical `/api/v3/missions` ✅
-- [ ] KL-003: Verify Docker boot — run `docker compose -f docker-compose.test.yml up --build && bash scripts/verify_boot.sh`
+
+**Production hardening (all required before any user traffic):**
 - [ ] Set `JARVIS_PRODUCTION=1` (enforces secret validation + disables SI)
 - [ ] Generate proper `JARVIS_SECRET_KEY` (`openssl rand -hex 32`)
 - [ ] Set strong `JARVIS_ADMIN_PASSWORD` (not `admin`)
 - [ ] Set `JARVIS_API_TOKEN` for script/API key auth
-- [ ] Run full integration suite: `pytest --run-infra-tests` against Docker stack
 - [ ] Verify `verify_boot.sh` passes with production LLM key
 - [ ] Confirm lens-reviewer agent not causing mission failures at scale
 

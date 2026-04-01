@@ -59,6 +59,23 @@ Test suite expanded from 37 → 95 unit tests. All green on Windows and Linux/CI
 All 180 non-integration tests pass on Windows Python 3.14.
 All 95 CI-gated tests pass (Linux CI environment: Python 3.12).
 
+### Backend stability assessment (Cycle 15)
+
+The backend is **stable, coherent, and ready for external validation.**
+It is NOT yet declared frozen. Three items remain before freeze can be called:
+
+1. **Docker live boot proof** (KL-003) — static alignment done; actual `docker compose up` not run
+   in this environment. Required to confirm no Dockerfile-level bugs survive into the container.
+
+2. **Integration test run against live stack** (KL-006) — `pytest --run-infra-tests` never executed
+   end-to-end. Must run against real Postgres + Qdrant + LLM key to surface any remaining real bugs.
+
+3. **WAITING_APPROVAL post-restart gap** (KL-008) — narrow edge case, low risk. Documented.
+   Workaround exists (re-submit). Suitable for productization backlog, not a freeze blocker.
+
+Items 1 and 2 require a machine with Docker and a live LLM API key.
+Once both pass, the backend is frozen and `RELEASE_READINESS.md` should be updated accordingly.
+
 ---
 
 ## Cycle 11 — Internal-Beta Hardening (2026-04-01)
