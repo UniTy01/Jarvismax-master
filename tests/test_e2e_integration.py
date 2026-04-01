@@ -11,6 +11,8 @@ import os
 import sys
 import time
 import types
+pytestmark = pytest.mark.integration
+
 
 if 'structlog' not in sys.modules:
     sl = types.ModuleType('structlog')

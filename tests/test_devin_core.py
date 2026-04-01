@@ -55,7 +55,7 @@ from core.self_improvement.sandbox_executor import (
     SandboxExecutor, SandboxResult, SandboxConfig,
 )
 from core.self_improvement.test_runner import (
-    TestRunner, TestSuiteResult, RegressionReport,
+    PatchRunner as TestRunner, SuiteResult as TestSuiteResult, RegressionReport,
 )
 from core.self_improvement.git_agent import (
     GitAgent, CommitInfo, PRInfo, PROTECTED_BRANCHES,

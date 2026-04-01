@@ -1,6 +1,8 @@
 """Tests live des tools — vérifie l'exécution réelle sur le VPS."""
 import pytest
 import sys, os
+pytestmark = pytest.mark.integration
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.tool_executor import (

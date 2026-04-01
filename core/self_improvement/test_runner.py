@@ -29,7 +29,7 @@ from core.self_improvement.sandbox_executor import SandboxExecutor, SandboxResul
 
 
 @dataclass
-class TestSuiteResult:
+class SuiteResult:
     """Parsed test results."""
     total: int = 0
     passed: int = 0
@@ -67,8 +67,8 @@ class TestSuiteResult:
 @dataclass
 class RegressionReport:
     """Baseline vs candidate test comparison."""
-    baseline: TestSuiteResult
-    candidate: TestSuiteResult
+    baseline: SuiteResult
+    candidate: SuiteResult
     new_failures: int = 0
     fixed_failures: int = 0
     regression_detected: bool = False
@@ -95,7 +95,7 @@ class ValidationReport:
     decision: str = ""          # PROMOTE, REJECT, REVIEW
     reason: str = ""
     syntax_ok: bool = False
-    tests: TestSuiteResult | None = None
+    tests: SuiteResult | None = None
     regression: RegressionReport | None = None
     lint_ok: bool = True
     lint_output: str = ""
@@ -160,10 +160,10 @@ class ExperimentReport:
         }
 
 
-class TestRunner:
+class PatchRunner:
     """
     Runs tests and produces validation reports for the improvement loop.
-    
+
     Delegates execution to SandboxExecutor for isolation.
     Fail closed: if sandbox is blocked, decision = REJECT.
     """
@@ -176,13 +176,13 @@ class TestRunner:
 
     def run_in_sandbox(self, sandbox_path: str,
                         test_targets: list[str] | None = None,
-                        timeout: int = 120) -> TestSuiteResult:
+                        timeout: int = 120) -> SuiteResult:
         """Run tests in sandbox, parse results."""
         result = self._sandbox.run_tests(sandbox_path, test_targets, timeout)
         return self._parse_sandbox_result(result)
 
     def run_affected(self, sandbox_path: str, changed_files: list[str],
-                      timeout: int = 120) -> TestSuiteResult:
+                      timeout: int = 120) -> SuiteResult:
         """Run only tests affected by changed files."""
         test_files = self._find_affected_tests(changed_files)
         if test_files:
@@ -266,8 +266,8 @@ class TestRunner:
 
     # ── Regression detection ──
 
-    def check_regression(self, baseline: TestSuiteResult,
-                          candidate: TestSuiteResult) -> RegressionReport:
+    def check_regression(self, baseline: SuiteResult,
+                          candidate: SuiteResult) -> RegressionReport:
         """Compare baseline vs candidate results."""
         new_failures = max(0, candidate.failed - baseline.failed)
         fixed = max(0, baseline.failed - candidate.failed)
@@ -288,7 +288,7 @@ class TestRunner:
         patch_id: str,
         sandbox_path: str,
         changed_files: list[str],
-        baseline: TestSuiteResult | None = None,
+        baseline: SuiteResult | None = None,
         rollback_instructions: str = "",
         unified_diff: str = "",
     ) -> ValidationReport:
@@ -375,8 +375,8 @@ class TestRunner:
 
     # ── Internal ──
 
-    def _parse_output(self, output: str, result: TestSuiteResult) -> TestSuiteResult:
-        """Parse raw pytest output string into TestSuiteResult in-place."""
+    def _parse_output(self, output: str, result: SuiteResult) -> SuiteResult:
+        """Parse raw pytest output string into SuiteResult in-place."""
         passed_m = re.search(r"(\d+) passed", output)
         failed_m = re.search(r"(\d+) failed", output)
         error_m = re.search(r"(\d+) error", output)
@@ -394,9 +394,9 @@ class TestRunner:
             result.failure_details.append({"test": fb.strip()})
         return result
 
-    def _parse_sandbox_result(self, sandbox: SandboxResult) -> TestSuiteResult:
-        """Parse SandboxResult into TestSuiteResult."""
-        result = TestSuiteResult(
+    def _parse_sandbox_result(self, sandbox: SandboxResult) -> SuiteResult:
+        """Parse SandboxResult into SuiteResult."""
+        result = SuiteResult(
             exit_code=sandbox.exit_code,
             raw_output=sandbox.stdout + sandbox.stderr,
             duration_s=sandbox.duration_ms / 1000,

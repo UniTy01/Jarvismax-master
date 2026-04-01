@@ -17,7 +17,7 @@ on:
       - "*.md"
       - "LICENSE"
   pull_request:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: kernel-ci-${{ github.ref }}
@@ -149,6 +149,9 @@ jobs:
           "
 
       # ── Full integration test (R1–R10) ────────────────────────
+      # Runs standalone (not pytest) to avoid the Qdrant-dependent tests
+      # that are marked @pytest.mark.integration and excluded by default.
+      # To run all tests including integration: pytest -m integration
       - name: Integration tests — R1-R10 (31 tests)
         run: |
           python tests/test_integration_kernel_security_business.py

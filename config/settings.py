@@ -193,12 +193,87 @@ class Settings:
     huggingface_api_key:  str = field(default_factory=lambda: os.environ.get("HUGGINGFACE_API_KEY", ""))
     embedding_provider:   str = field(default_factory=lambda: os.environ.get("EMBEDDING_PROVIDER", "local"))
 
+    @property
+    def production_mode(self) -> bool:
+        """True when JARVIS_PRODUCTION=true/1/yes is set."""
+        return _b("JARVIS_PRODUCTION")
+
+    @property
+    def has_llm_key(self) -> bool:
+        """True if at least one LLM provider API key is configured."""
+        return bool(self.openai_api_key or self.anthropic_api_key or self.openrouter_api_key)
+
+    def enforce_llm_key(self) -> None:
+        """
+        Hard-fail if no LLM key is configured and we are not in DRY_RUN mode.
+
+        Called at startup. Raises RuntimeError immediately — no silent drift.
+        In DRY_RUN mode the system stubs LLM responses, so no key is needed.
+
+        Override at startup by setting DRY_RUN=true (dev/test only).
+        """
+        if self.dry_run:
+            return  # DRY_RUN=true: stubs LLM calls, no key needed
+        if not self.has_llm_key:
+            raise RuntimeError(
+                "NO LLM KEY CONFIGURED — Jarvis Max cannot serve any mission.\n"
+                "Set at least one of:\n"
+                "  OPENAI_API_KEY=sk-...\n"
+                "  ANTHROPIC_API_KEY=sk-ant-...\n"
+                "  OPENROUTER_API_KEY=sk-or-...\n"
+                "Or set DRY_RUN=true to start without a key (stubs LLM responses, dev only)."
+            )
+
+    def enforce_production_secrets(self) -> None:
+        """
+        Hard-fail if running in production mode with insecure defaults.
+
+        Call this ONCE at startup, before accepting any request.
+        Raises RuntimeError with a clear human-readable message.
+        Controlled by JARVIS_PRODUCTION=true env var — never raises in dev.
+        """
+        if not self.production_mode:
+            return
+        errors: list[str] = []
+        if self.jarvis_secret_key == "change-me-in-production":
+            errors.append(
+                "JARVIS_SECRET_KEY is the default placeholder. "
+                "Set a cryptographically random value in your .env file."
+            )
+        if not self.jarvis_admin_password:
+            errors.append(
+                "JARVIS_ADMIN_PASSWORD is not set. "
+                "Admin auth falls back to JARVIS_SECRET_KEY — set an explicit admin password."
+            )
+        if not self.jarvis_api_token:
+            errors.append(
+                "JARVIS_API_TOKEN is not set. "
+                "All API endpoints are unauthenticated in production."
+            )
+        if errors:
+            raise RuntimeError(
+                "PRODUCTION STARTUP BLOCKED — insecure configuration detected:\n"
+                + "\n".join(f"  • {e}" for e in errors)
+                + "\nFix these issues or unset JARVIS_PRODUCTION to run in dev mode."
+            )
+
     def validate_security(self) -> list[str]:
         """Retourne la liste des avertissements de sécurité (secrets non configurés).
-        Ne bloque pas le démarrage — log uniquement."""
+        Ne bloque pas le démarrage — log uniquement.
+        Pour un hard-fail en production, appeler enforce_production_secrets()."""
         warnings: list[str] = []
         if self.jarvis_secret_key == "change-me-in-production":
             warnings.append("JARVIS_SECRET_KEY is set to the default placeholder — override it in production")
+        if not self.jarvis_admin_password:
+            warnings.append(
+                "JARVIS_ADMIN_PASSWORD is not set — admin login falls back to JARVIS_SECRET_KEY. "
+                "Set JARVIS_ADMIN_PASSWORD explicitly for production."
+            )
+        if not self.jarvis_api_token:
+            warnings.append(
+                "JARVIS_API_TOKEN is not set — all API endpoints are unauthenticated. "
+                "Set JARVIS_API_TOKEN in .env for any non-local deployment."
+            )
         if not self.openai_api_key and not self.anthropic_api_key and not self.openrouter_api_key:
             warnings.append("No LLM API key configured (OPENAI_API_KEY / ANTHROPIC_API_KEY / OPENROUTER_API_KEY)")
         if not self.qdrant_api_key:

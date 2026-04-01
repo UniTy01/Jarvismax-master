@@ -443,6 +443,33 @@ class JarvisOrchestrator:
             and decision.mode not in (TaskMode.CHAT,)
         )
 
+        # 3a. Hierarchical decomposition (strategic layer) — fires before AtlasDirector
+        # for high-complexity missions. Fail-open: if it fails, planning continues normally.
+        if use_director:
+            try:
+                from core.hierarchical_planner import get_mission_decomposer
+                _h_plan = get_mission_decomposer().decompose(
+                    goal=session.user_input,
+                    mission_type=str(getattr(decision, "mission_type", "general")),
+                    complexity="high",
+                    mission_id=session.session_id,
+                )
+                if _h_plan:
+                    session._hierarchical_plan = _h_plan  # type: ignore[attr-defined]
+                    await emit(
+                        f"[HierarchicalPlanner] {len(_h_plan.macro_goals)} objectifs stratégiques, "
+                        f"{_h_plan.total_tactical_steps} étapes tactiques."
+                    )
+                    log.info(
+                        "hierarchical_plan_attached",
+                        sid=session.session_id,
+                        plan_id=_h_plan.plan_id,
+                        macro_goals=len(_h_plan.macro_goals),
+                        tactical_steps=_h_plan.total_tactical_steps,
+                    )
+            except Exception as _hp_exc:
+                log.debug("hierarchical_plan_skip", err=str(_hp_exc)[:80])
+
         if use_director:
             await emit(f"Mission complexe (score={complexity:.2f}) — AtlasDirector planifie...")
             try:
@@ -851,7 +878,10 @@ class JarvisOrchestrator:
     async def _run_parallel(self, session: JarvisSession, emit: CB):
         """
         Exécution parallèle des agents via ParallelExecutor.
-        Groupement par priorité, timeout par agent (90s) et global (300s).
+        Les agents sont regroupés par priorité et exécutés par vague :
+          P1 (vault-memory) → P2 (scout, map-planner, forge, …) → P3 (lens-reviewer)
+        Cela garantit que lens-reviewer (P3) dispose du contexte P2 complet
+        avant de démarrer son évaluation.
         """
         from agents.parallel_executor import ParallelExecutor
         pex = ParallelExecutor(self.s)
@@ -868,31 +898,50 @@ class JarvisOrchestrator:
             log.debug("parallel_no_tasks")
             return
 
-        # Replan dynamique activé si :
-        #   • mode != chat (les agents chat n'ont pas de fallback pertinent)
-        #   • au moins un agent critique (priority <= 2) dans le plan
-        mode_val     = getattr(session.task_mode, "value", str(session.task_mode))
-        has_critical = any(t.get("priority", 2) <= 2 for t in tasks)
-        use_replan   = (mode_val != "chat") and has_critical
+        mode_val = getattr(session.task_mode, "value", str(session.task_mode))
 
-        if use_replan:
-            log.debug("parallel_replan_enabled",
-                      mode=mode_val, critical_tasks=sum(1 for t in tasks if t.get("priority", 2) <= 2))
-            results = await pex.run_with_replan(
-                tasks, session, emit=emit, max_replan_rounds=1
-            )
-        else:
-            results = await pex.run(tasks, session, emit=emit)
+        # ── Exécution par vague de priorité ──────────────────────
+        # group_by_priority() retourne une liste de listes ordonnées par priorité.
+        # On exécute chaque vague séquentiellement, mais en parallèle à l'intérieur.
+        priority_waves = ParallelExecutor.group_by_priority(tasks)
+        all_results: dict = {}
+        total_ok = 0
+        total_failed: list[str] = []
 
-        # Comptabiliser succès/échecs
-        ok     = sum(1 for r in results.values() if r.success)
-        failed = [r.agent for r in results.values() if not r.success]
-        msg    = f"Parallel : {ok}/{len(results)} agents OK"
-        if failed:
-            msg += f" | Echecs : {', '.join(failed)}"
+        for wave_idx, wave_tasks in enumerate(priority_waves):
+            wave_priorities = sorted({t.get("priority", 2) for t in wave_tasks})
+            log.debug("parallel_wave_start",
+                      wave=wave_idx, priorities=wave_priorities,
+                      agents=[t.get("agent") for t in wave_tasks])
+
+            # Replan dynamique uniquement sur les vagues non-P3 en mode non-chat
+            has_critical = any(t.get("priority", 2) <= 2 for t in wave_tasks)
+            use_replan   = (mode_val != "chat") and has_critical
+
+            if use_replan:
+                wave_results = await pex.run_with_replan(
+                    wave_tasks, session, emit=emit, max_replan_rounds=1
+                )
+            else:
+                wave_results = await pex.run(wave_tasks, session, emit=emit)
+
+            all_results.update(wave_results)
+            wave_ok     = sum(1 for r in wave_results.values() if r.success)
+            wave_failed = [r.agent for r in wave_results.values() if not r.success]
+            total_ok     += wave_ok
+            total_failed += wave_failed
+
+            log.info("parallel_wave_done",
+                     wave=wave_idx, priorities=wave_priorities,
+                     ok=wave_ok, failed=len(wave_failed))
+
+        # Comptabiliser succès/échecs globaux
+        msg = f"Parallel : {total_ok}/{len(all_results)} agents OK"
+        if total_failed:
+            msg += f" | Echecs : {', '.join(total_failed)}"
         await emit(msg)
-        log.info("parallel_done", ok=ok, failed=len(failed),
-                 replan_used=use_replan)
+        log.info("parallel_done", ok=total_ok, failed=len(total_failed),
+                 waves=len(priority_waves))
 
     # ── Observer ──────────────────────────────────────────────
 

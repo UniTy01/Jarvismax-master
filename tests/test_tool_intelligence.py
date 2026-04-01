@@ -1,5 +1,7 @@
 """Tests Tool Intelligence Layer V1 — fail-open partout."""
 import pytest, os
+pytestmark = pytest.mark.integration
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

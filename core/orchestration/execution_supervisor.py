@@ -91,6 +91,15 @@ async def supervise(
     t0 = time.monotonic()
     last_error = ""
 
+    log.info(
+        "mission_started",
+        mission_id=mission_id,
+        goal_snippet=goal[:120],
+        mode=mode,
+        risk_level=risk_level,
+        requires_approval=requires_approval,
+    )
+
     # ── Approval gate ─────────────────────────────────────────
     # skip_approval=True means a human already approved (resumption path)
     if not skip_approval and _needs_approval(risk_level, requires_approval):
@@ -166,6 +175,52 @@ async def supervise(
                 ),
                 timeout=_ATTEMPT_TIMEOUT_S,
             )
+
+            # ── Validate execution result ─────────────────────────────────────
+            # execute_fn returns normally even when all agents fail (auth errors,
+            # empty outputs). We MUST inspect the session outcome — absence of
+            # exception is NOT sufficient to declare success.
+            _exec_ok, _exec_error, _exec_error_class = _check_session_outcome(session)
+
+            if not _exec_ok:
+                # Execution returned but the result is a failure.
+                # Log as error (not just warning) so it surfaces clearly.
+                last_error = _exec_error
+                outcome.error_class = _exec_error_class
+                outcome.decision_trace.append({
+                    "step": "execution_result_invalid",
+                    "attempt": attempt + 1,
+                    "error_class": _exec_error_class,
+                    "reason": _exec_error[:120],
+                })
+                log.error("execution_result_invalid",
+                          mission_id=mission_id,
+                          error_class=_exec_error_class,
+                          reason=_exec_error[:120],
+                          attempt=attempt + 1)
+
+                # Auth failures are permanent — retrying the same bad key never works.
+                # All-agents-failed is treated as permanent; partial failures use
+                # normal recovery logic.
+                if _exec_error_class in ("provider_auth_failure", "all_agents_failed"):
+                    # Force abort — skip retry loop
+                    outcome.recovery_actions.append(RecoveryAction.ABORT.value)
+                    break
+
+                # Other execution failures: use standard recovery logic
+                action = _decide_recovery(_exec_error_class, attempt, risk_level)
+                outcome.recovery_actions.append(action.value)
+                if action == RecoveryAction.RETRY and attempt < _MAX_RETRIES:
+                    backoff = _RETRY_BACKOFF_BASE * (attempt + 1)
+                    log.warning("execution_retry_after_invalid_result",
+                                mission_id=mission_id, attempt=attempt + 1,
+                                backoff=backoff)
+                    await asyncio.sleep(backoff)
+                    continue
+                # ABORT / FALLBACK / ESCALATE: exit retry loop
+                break
+
+            # ── Success path ──────────────────────────────────────────────────
             outcome.success = True
             outcome.result = getattr(session, "final_report", "") or ""
             outcome.retries = attempt
@@ -193,9 +248,13 @@ async def supervise(
             except Exception:
                 pass
 
-            log.info("execution_supervised_ok",
-                     mission_id=mission_id, attempts=attempt + 1,
-                     duration_ms=outcome.duration_ms)
+            log.info(
+                "mission_completed",
+                mission_id=mission_id,
+                duration_ms=outcome.duration_ms,
+                attempts=attempt + 1,
+                result_len=len(outcome.result),
+            )
             return outcome
 
         except asyncio.TimeoutError:
@@ -281,11 +340,14 @@ async def supervise(
     outcome.retries = min(attempt, _MAX_RETRIES)
     outcome.duration_ms = int((time.monotonic() - t0) * 1000)
 
-    log.error("execution_supervised_failed",
-              mission_id=mission_id,
-              retries=outcome.retries,
-              error_class=outcome.error_class,
-              error=last_error[:80])
+    log.error(
+        "mission_failed",
+        mission_id=mission_id,
+        duration_ms=outcome.duration_ms,
+        retries=outcome.retries,
+        error_class=outcome.error_class,
+        error=last_error[:80],
+    )
     return outcome
 
 
@@ -366,6 +428,91 @@ async def _request_approval(
         return {"approved": True, "auto": True}
 
 
+def _check_session_outcome(session: Any) -> tuple[bool, str, str]:
+    """
+    Validate that execute_fn() produced a real result, not a ghost-success.
+
+    Returns (ok, failure_reason, error_class) where:
+      ok=True  → execution genuinely succeeded (≥20% agents produced output)
+      ok=False → execution failed despite no exception being raised
+
+    This guards the critical ghost-DONE path: when all agents fail internally
+    (e.g. LLM provider auth error, invalid API key), execute_fn() returns
+    normally without raising. Without this check, outcome.success=True would
+    be set unconditionally and the mission would reach DONE with empty/garbage
+    output.
+
+    error_class values:
+      "provider_auth_failure" → permanent, never retry
+      "all_agents_failed"     → permanent, never retry
+      "execution_failure"     → may retry (transient)
+    """
+    # 1. Explicit session-level error → immediate failure
+    session_error = getattr(session, "error", None)
+    if session_error:
+        return False, f"session_error: {str(session_error)[:120]}", "execution_failure"
+
+    # 2. Inspect agent outputs to compute real success rate
+    outputs = getattr(session, "outputs", {})
+    agents_plan = getattr(session, "agents_plan", [])
+    planned = [t.get("agent", "") for t in agents_plan if t.get("agent")]
+
+    if not planned:
+        # No agent plan: rely on final_report presence
+        final = (getattr(session, "final_report", "") or "").strip()
+        if not final:
+            return False, "empty_result: no agents planned and no final report produced", "execution_failure"
+        return True, "", ""
+
+    total = len(planned)
+    ok_count = 0
+    failed_names: list[str] = []
+    auth_error_agents: list[str] = []
+
+    for name in planned:
+        out = outputs.get(name)
+        if out and getattr(out, "success", False) and getattr(out, "content", ""):
+            ok_count += 1
+        else:
+            failed_names.append(name)
+            # Check for auth errors in the failed agent's error message
+            agent_error = str(getattr(out, "error", "") or "").lower() if out else ""
+            if any(kw in agent_error for kw in (
+                "401", "authentication", "invalid_api_key", "invalid api key",
+                "auth", "unauthorized", "forbidden", "403",
+            )):
+                auth_error_agents.append(name)
+
+    rate = ok_count / total if total > 0 else 0.0
+
+    # Success: ≥20% agents produced real output (matches orchestrator PARTIAL threshold)
+    if rate >= 0.20:
+        return True, "", ""
+
+    # Failure: <20% agents succeeded — diagnose the cause
+    if auth_error_agents:
+        reason = (
+            f"provider_auth_failure: {len(auth_error_agents)}/{total} agents rejected "
+            f"by LLM provider — check API key validity. "
+            f"Failed agents: {auth_error_agents[:3]}"
+        )
+        log.error("execution_auth_failure_detected",
+                  auth_failed=len(auth_error_agents),
+                  total=total,
+                  agents=auth_error_agents[:3])
+        return False, reason, "provider_auth_failure"
+
+    reason = (
+        f"all_agents_failed: {ok_count}/{total} agents produced output "
+        f"(rate={rate:.0%}, threshold=20%). "
+        f"Failed: {failed_names[:3]}"
+    )
+    log.error("execution_all_agents_failed",
+              ok=ok_count, total=total, rate=round(rate, 2),
+              failed=failed_names[:3])
+    return False, reason, "all_agents_failed"
+
+
 def _decide_recovery(error_class: str, attempt: int, risk_level: str) -> RecoveryAction:
     """
     Decide recovery action based on error type, attempt count, and risk.
@@ -378,7 +525,10 @@ def _decide_recovery(error_class: str, attempt: int, risk_level: str) -> Recover
         return RecoveryAction.ESCALATE
 
     # Permanent errors → abort immediately (no point retrying)
-    if error_class in ("permission_denied", "invalid_input", "not_found"):
+    # provider_auth_failure: invalid key — retrying with same key never works
+    # all_agents_failed: systemic failure — same key/config won't recover on retry
+    if error_class in ("permission_denied", "invalid_input", "not_found",
+                       "provider_auth_failure", "all_agents_failed"):
         return RecoveryAction.ABORT
 
     # Transient errors → retry if attempts remain

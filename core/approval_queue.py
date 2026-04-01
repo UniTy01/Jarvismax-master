@@ -8,6 +8,8 @@ Approval Queue — file d'approbation humaine centralisée.
 Toute action à risque élevé doit être soumise ici avant exécution.
 """
 import json
+import os
+import threading
 import uuid
 import pathlib
 import datetime
@@ -17,6 +19,57 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 QUEUE_PATH = pathlib.Path("workspace/approval_queue/pending.json")
+
+
+def _fire_approval_webhook(item: dict) -> None:
+    """
+    POST the approval item to an outbound webhook URL (fire-and-forget).
+
+    Env vars (first defined wins):
+        APPROVAL_WEBHOOK_URL   — dedicated approval webhook
+        N8N_WEBHOOK_URL        — n8n automation fallback
+
+    Fires in a daemon thread so it never blocks the main flow.
+    Completely fail-open: any error is logged at DEBUG level only.
+    """
+    webhook_url = (
+        os.environ.get("APPROVAL_WEBHOOK_URL", "").strip()
+        or os.environ.get("N8N_WEBHOOK_URL", "").strip()
+    )
+    if not webhook_url:
+        return
+
+    payload = {
+        "event":      "approval_requested",
+        "item_id":    item.get("id"),
+        "action":     item.get("action"),
+        "risk_level": item.get("risk_level"),
+        "reason":     item.get("reason"),
+        "source":     item.get("source"),
+        "submitted_at": item.get("submitted_at"),
+        "approve_url": f"/approval/approve/{item.get('id')}",
+        "reject_url":  f"/approval/reject/{item.get('id')}",
+    }
+
+    def _send():
+        try:
+            import urllib.request
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                webhook_url,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                logger.info(
+                    f"[ApprovalQueue] webhook fired → {webhook_url[:40]}… "
+                    f"status={resp.status}"
+                )
+        except Exception as exc:
+            logger.debug(f"[ApprovalQueue] webhook failed (non-fatal): {exc}")
+
+    threading.Thread(target=_send, daemon=True, name="approval-webhook").start()
 
 
 class RiskLevel(str, Enum):
@@ -90,6 +143,13 @@ def submit_for_approval(
         items.append(item)
         _save(items)
         logger.info(f"[ApprovalQueue] submitted {item['id'][:8]}… — {action} ({risk_level})")
+
+        # ── Outbound webhook notification (fail-open) ──────────────────────
+        # Set APPROVAL_WEBHOOK_URL (or N8N_WEBHOOK_URL) in environment to receive
+        # a POST with the full item payload whenever a new approval is queued.
+        # Compatible with n8n, Zapier, Slack webhooks, etc.
+        _fire_approval_webhook(item)
+
         return {"approved": False, "item_id": item["id"], "pending": True, "auto": False}
 
     except Exception as e:

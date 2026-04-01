@@ -17,6 +17,9 @@ import json
 import types
 import unittest
 import shutil
+import pytest
+pytestmark = pytest.mark.integration
+
 
 # ── Structlog stub ────────────────────────────────────────────────────────────
 if 'structlog' not in sys.modules:

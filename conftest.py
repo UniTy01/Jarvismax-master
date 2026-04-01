@@ -6,9 +6,27 @@ conftest.py — JarvisMax test configuration.
 2. Ensures a fresh event loop for each test (pytest-asyncio asyncio_mode=auto
    closes loops after async tests, breaking sync tests that call
    asyncio.get_event_loop().run_until_complete()).
+3. Sets JARVIS_SKIP_IMPROVEMENT_GATE=1 for the full test session so that
+   kernel.improvement.gate bypasses security checks. This replaces the
+   old reset_daemon_state() side-effect that permanently set this env var
+   mid-test, which could cause cross-test contamination.
+4. Marks tests requiring live infrastructure (Qdrant, live server, real LLM key)
+   with pytest.mark.integration or pytest.mark.infra. These are skipped by default
+   in CI and in unit-test runs. Pass --run-infra-tests to include them.
+
+Usage:
+    pytest                            # unit tests only (fast, no infra)
+    pytest --run-infra-tests          # include integration/infra tests
+    pytest tests/smoke/ --run-infra-tests  # smoke tests against live stack
+    pytest -m "not integration"       # explicitly exclude integration tests
 """
 import asyncio
+import os
 import pytest
+
+# Bypass improvement gate security check for all tests — prevents dependency
+# on security layer availability (qdrant, structlog) inside test environments.
+os.environ.setdefault("JARVIS_SKIP_IMPROVEMENT_GATE", "1")
 
 # ── Pre-load key modules so test-level mocks cannot overwrite them ──────────
 # Tests that do sys.modules.setdefault("some.module", MagicMock()) can only
@@ -32,6 +50,54 @@ for _preload in [
         __import__(_preload)
     except Exception:
         pass  # If missing, tests that need it will handle it themselves
+
+
+# ── Integration test CI gate ─────────────────────────────────────────────────
+# Tests decorated with @pytest.mark.integration or @pytest.mark.infra require
+# a live stack (Qdrant, running server, real LLM API key). They are skipped
+# by default. Pass --run-infra-tests to include them.
+#
+# Marker semantics:
+#   integration — requires a running Jarvis Max server + LLM key
+#   infra       — requires any external infrastructure (Qdrant, Postgres, etc.)
+#
+# How to mark a test:
+#   @pytest.mark.integration
+#   def test_mission_e2e(): ...
+#
+#   @pytest.mark.infra
+#   def test_qdrant_connection(): ...
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--run-infra-tests",
+        action="store_true",
+        default=False,
+        help="Include integration and infra tests that require a live stack.",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "integration: marks tests that require a running Jarvis Max server and LLM key",
+    )
+    config.addinivalue_line(
+        "markers",
+        "infra: marks tests that require live external infrastructure (Qdrant, Postgres, etc.)",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    if config.getoption("--run-infra-tests", default=False):
+        return  # All tests run
+    skip_infra = pytest.mark.skip(reason="requires live infra — run with --run-infra-tests")
+    for item in items:
+        if item.get_closest_marker("integration") or item.get_closest_marker("infra"):
+            item.add_marker(skip_infra)
 
 
 @pytest.fixture(autouse=True)

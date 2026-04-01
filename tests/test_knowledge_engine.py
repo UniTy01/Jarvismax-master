@@ -15,6 +15,9 @@ from __future__ import annotations
 import sys
 import os
 import time
+import pytest
+pytestmark = pytest.mark.integration
+
 
 # Ensure project root is in path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -175,8 +175,11 @@ class TestSecurityHeaders:
 
     def test_xcontent_type(self):
         """H11: X-Content-Type-Options — all paths get it."""
-        # Middleware adds nosniff to all — tested via middleware
-        pass  # Covered by H10 logic
+        import pytest
+        pytest.skip(
+            "X-Content-Type-Options header is set by security middleware. "
+            "Verify with: curl -I http://localhost:8000/health | grep X-Content-Type-Options"
+        )
 
     def test_docs_exempt(self):
         """H12: /docs is CSP exempt."""

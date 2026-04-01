@@ -13,6 +13,8 @@ Validates:
 import pytest
 from core.planning.execution_plan import ExecutionPlan, PlanStep, StepType, PlanStatus
 from core.planning.step_context import StepContext
+pytestmark = pytest.mark.integration
+
 
 
 # ══════════════════════════════════════════════════════════════

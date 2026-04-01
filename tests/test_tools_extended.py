@@ -3,6 +3,8 @@ Tests étendus pour les tools L4 — tous graceful (SKIP si tool indisponible).
 """
 import os
 import pytest
+pytestmark = pytest.mark.integration
+
 
 JARVIS_ROOT = os.environ.get("JARVIS_ROOT", "/opt/jarvismax")
 

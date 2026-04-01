@@ -12,3 +12,12 @@ jarvismax_app/
 node_modules/
 .env
 .env.local
+.env.*
+venv/
+.venv/
+env/
+workspace/
+logs/
+data/model_performance.json
+*.sqlite
+*.db

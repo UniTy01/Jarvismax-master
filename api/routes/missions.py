@@ -598,8 +598,10 @@ async def submit_task(
                 if _cur and _cur.status not in ("DONE", "PENDING_VALIDATION"):
                     ms.set_final_output(result.mission_id, _err_output)
                     ms.complete(result.mission_id, result_text=_err_output)
-            except Exception:
-                pass
+            except Exception as _completion_err:
+                log.error("mission_completion_failed",
+                          mission_id=str(result.mission_id),
+                          err=str(_completion_err)[:120])
         finally:
             _running_missions.discard(result.mission_id)
 
@@ -1029,6 +1031,13 @@ async def approve_mission(
     if r.status not in ("APPROVED", "PENDING_VALIDATION"):
         return {"ok": False, "error": f"Mission is in status '{r.status}', cannot approve."}
 
+    # 1b. Canonical bridge approval — updates canonical status + MetaOrchestrator + persists
+    try:
+        from core.orchestration_bridge import get_orchestration_bridge
+        get_orchestration_bridge().approve_mission(mission_id, note=note)
+    except Exception as _be:
+        log.debug("bridge_approve_skipped", err=str(_be)[:60])
+
     # 2. Approve the pending approval_queue item (if any)
     try:
         from core.meta_orchestrator import get_meta_orchestrator
@@ -1096,6 +1105,13 @@ async def reject_mission(
     r = ms.reject(mission_id, note=note)
     if r is None:
         raise HTTPException(status_code=404, detail=f"Mission '{mission_id}' not found.")
+
+    # Canonical bridge rejection — updates canonical status + MetaOrchestrator + persists
+    try:
+        from core.orchestration_bridge import get_orchestration_bridge
+        get_orchestration_bridge().reject_mission(mission_id, note=note)
+    except Exception as _be:
+        log.debug("bridge_reject_skipped", err=str(_be)[:60])
 
     # Reject the approval_queue item too
     try:

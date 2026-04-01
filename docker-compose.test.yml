@@ -1,0 +1,109 @@
+# ================================================================
+# JARVIS MAX — Minimal test stack (E2E proof path)
+#
+# Services: Qdrant + Jarvis API only.
+# No Postgres, Redis, Ollama, n8n, Caddy, Langfuse.
+#
+# PROVEN PATH (Anthropic — recommended):
+#   export ANTHROPIC_API_KEY=sk-ant-...
+#   export JARVIS_ADMIN_PASSWORD=<password>
+#   export JARVIS_SECRET_KEY=$(openssl rand -hex 32)
+#   docker compose -f docker-compose.test.yml up --build
+#   JARVIS_ADMIN_PASSWORD=<password> bash scripts/verify_boot.sh
+#
+# OpenRouter path (proven 2026-04-01):
+#   pip install langchain-openai
+#   export OPENROUTER_API_KEY=sk-or-...
+#   export MODEL_STRATEGY=openrouter
+#   export MODEL_FALLBACK=anthropic   # optional fallback
+#
+# Run E2E smoke test:
+#   pip install httpx pytest
+#   pytest tests/smoke/test_e2e_smoke.py -v
+# ================================================================
+
+networks:
+  jarvis_test_net:
+    driver: bridge
+
+volumes:
+  qdrant_test_data:
+  jarvis_workspace_data:    # persistent workspace — canonical missions, jarvismax.db
+
+services:
+
+  # ── Qdrant (vector memory — required at runtime) ──────────
+  qdrant:
+    image: qdrant/qdrant:v1.9.7
+    container_name: jarvis_test_qdrant
+    restart: "no"
+    environment:
+      QDRANT__LOG_LEVEL: WARN
+    volumes:
+      - qdrant_test_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    networks: [jarvis_test_net]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/6333 && echo ok' 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # ── Jarvis Core API ───────────────────────────────────────
+  jarvis:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: jarvis_test_core
+    restart: "no"
+    environment:
+      # ── LLM — at least one key required ──────────────────
+      # PROVEN PATH A (Anthropic): set ANTHROPIC_API_KEY + leave MODEL_STRATEGY/MODEL_FALLBACK as-is.
+      # PROVEN PATH B (OpenRouter): set OPENROUTER_API_KEY + MODEL_STRATEGY=openrouter in your env.
+      OPENAI_API_KEY:       ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY:    ${ANTHROPIC_API_KEY:-}
+      OPENROUTER_API_KEY:   ${OPENROUTER_API_KEY:-}
+      # Auto-select strategy: if ANTHROPIC_API_KEY set and no OPENROUTER, use anthropic fallback.
+      # Override by setting MODEL_STRATEGY in your env.
+      MODEL_STRATEGY:       ${MODEL_STRATEGY:-anthropic}
+      MODEL_FALLBACK:       ${MODEL_FALLBACK:-anthropic}
+      ANTHROPIC_MODEL:      ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      JARVIS_ADMIN_PASSWORD: ${JARVIS_ADMIN_PASSWORD:-admin}
+
+      # ── Core settings ─────────────────────────────────────
+      JARVIS_SECRET_KEY:    ${JARVIS_SECRET_KEY:-test-secret-key-not-for-production}
+      JARVIS_NAME:          JarvisMax-Test
+      JARVIS_MODE:          local
+
+      # ── Service endpoints ─────────────────────────────────
+      QDRANT_HOST:          qdrant
+      QDRANT_PORT:          6333
+
+      # ── Disable optional services cleanly ─────────────────
+      POSTGRES_HOST:        ""
+      REDIS_HOST:           ""
+      OLLAMA_HOST:          ""
+      N8N_HOST:             ""
+      LANGFUSE_ENABLED:     "false"
+      SELF_IMPROVE_ENABLED: "false"    # Disable SI daemon in test stack
+
+      # ── Dirs ──────────────────────────────────────────────
+      WORKSPACE_DIR:        /app/workspace
+      LOGS_DIR:             /app/logs
+      JARVIS_ROOT:          /app
+    volumes:
+      - jarvis_workspace_data:/app/workspace   # persists canonical_missions.db, jarvismax.db
+    ports:
+      - "8000:8000"
+    networks: [jarvis_test_net]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v3/system/readiness || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 60s

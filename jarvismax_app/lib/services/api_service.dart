@@ -347,7 +347,7 @@ class ApiService extends ChangeNotifier {
   Future<ApiResult<Mission>> submitMission(String input) async {
     _setLoading(true);
     try {
-      final raw = await _post('/api/mission', {'input': input, 'mode': 'auto', 'priority': 2});
+      final raw = await _post('/api/v3/missions', {'goal': input});
       final data = raw['data'];
       final Map<String, dynamic> missionJson = data is Map<String, dynamic>
           ? data
@@ -391,7 +391,7 @@ class ApiService extends ChangeNotifier {
 
   Future<ApiResult<Mission>> fetchMissionDetail(String id) async {
     try {
-      final raw = await _get('/api/v2/missions/$id');
+      final raw = await _get('/api/v3/missions/$id');
       final data = raw['data'];
       final Map<String, dynamic> missionJson = data is Map<String, dynamic>
           ? data
@@ -751,7 +751,7 @@ class ApiService extends ChangeNotifier {
   // ── Private helpers ───────────────────────────────────────────────────────
 
   Future<void> _loadMissions() async {
-    final raw = await _get('/api/v2/missions');
+    final raw = await _get('/api/v3/missions');
     final data = raw['data'];
     final List<dynamic> list;
     if (data is Map && data.containsKey('missions')) {

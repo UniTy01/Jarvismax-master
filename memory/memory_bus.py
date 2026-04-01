@@ -380,6 +380,11 @@ class MemoryBus:
         if BACKEND_STORE in active and self.store:
             tasks.append((BACKEND_STORE, self._search_store(query, top_k)))
 
+        # pgvector augmentation — always attempted when available, even if not in BACKEND_ALL.
+        # Provides semantic PostgreSQL results alongside local vector results.
+        if self.pgvector and self.pgvector.is_available():
+            tasks.append((BACKEND_PGVECTOR, self._search_pgvector(query, top_k)))
+
         # Exécuter en parallèle
         if tasks:
             coros      = [t[1] for t in tasks]
@@ -416,12 +421,41 @@ class MemoryBus:
             lambda: self.vector.search(query, top_k=top_k),
         )
 
+    async def _search_pgvector(self, query: str, top_k: int) -> list[dict]:
+        """
+        Semantic search via pgvector (PostgreSQL).
+        Returns [] silently if pgvector is unavailable or embedding fails.
+        """
+        if not self.pgvector or not self.pgvector.is_available():
+            return []
+        try:
+            from memory.embeddings import EmbeddingProvider
+            ep  = EmbeddingProvider(self.s)
+            vec = await ep.embed(query)
+            hits = await self.pgvector.search_similar(
+                embedding=vec,
+                top_k=top_k,
+                min_score=0.4,
+            )
+            return [
+                {
+                    "id":       r["id"],
+                    "text":     r.get("content", ""),
+                    "score":    r.get("score", 0.0),
+                    "metadata": r.get("metadata", {}),
+                }
+                for r in hits
+            ]
+        except Exception as exc:
+            log.debug("memory_bus_pgvector_search_skip", err=str(exc)[:80])
+            return []
+
     async def _search_store(self, query: str, top_k: int) -> list[dict]:
         """Recherche MemoryStore."""
         if not self.store:
             return []
         try:
-            raw = await self.store.search(query, top_k=top_k)
+            raw = await self.store.search(query, k=top_k)  # MemoryStore uses `k`, not `top_k`
             # MemoryStore retourne list[dict] avec "key", "text", "score"
             return [
                 {
@@ -541,10 +575,16 @@ class MemoryBus:
     # PHASE 2 - Canonical API  (store / retrieve / update / build_agent_context)
     # ==========================================================================
 
-    def store(self, text, memory_type="knowledge", layer="",
-              mission_id="", agent_id="", confidence=1.0,
-              tags=None, source="", metadata=None):
-        """Single entry point for all memory writes. Routes by layer."""
+    def store_memory(self, text, memory_type="knowledge", layer="",
+                     mission_id="", agent_id="", confidence=1.0,
+                     tags=None, source="", metadata=None):
+        """Single entry point for all memory writes. Routes by layer.
+
+        Renamed from 'store' to avoid shadowing the @property def store
+        (which returns the MemoryStore backend instance). Bug: the method
+        definition at class level overrides the property, making self.store
+        return a bound method instead of a MemoryStore, breaking search().
+        """
         from memory.schemas import (MemoryEntry, MemoryType, MemoryLayer,
                                     LAYER_FOR_TYPE, normalize_metadata)
         try:

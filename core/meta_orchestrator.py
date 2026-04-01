@@ -333,10 +333,6 @@ class MetaOrchestrator:
         force_approved=True bypasses the approval gate (used when a human
         has already approved the mission via /api/v2/missions/{id}/approve).
         """
-        """
-        Enhanced mission lifecycle with classification, context assembly,
-        supervised execution, and structured decision tracing.
-        """
         mid = mission_id or uuid.uuid4().hex[:16]
         now = time.time()
 
@@ -1666,3 +1662,7 @@ def get_meta_orchestrator(settings=None) -> MetaOrchestrator:
                 _meta = MetaOrchestrator(settings)
                 log.info("meta_orchestrator.singleton_created")
     return _meta
+
+
+# Alias for backward compatibility — some modules import get_orchestrator
+get_orchestrator = get_meta_orchestrator

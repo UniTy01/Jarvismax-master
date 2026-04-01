@@ -162,3 +162,8 @@ def test_endpoint(method: str, url: str, payload: dict = None, expected_status: 
         }
     except Exception as e:
         return _err(str(e), passed=False)
+
+
+# Prevent pytest from collecting test_endpoint as a test case.
+# test_endpoint is a utility function ("test an endpoint"), not a pytest test.
+test_endpoint.__test__ = False

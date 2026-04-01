@@ -23,10 +23,10 @@ async def get_journal_stats(_user: dict = Depends(require_auth)):
 @router.get("/recent")
 async def get_recent_events(
     limit: int = Query(50, ge=1, le=500),
-    domain: str | None = Query(None, regex="^(runtime|lab|system)$"),
+    domain: str | None = Query(None, pattern="^(runtime|lab|system)$"),
     event_type: str | None = None,
     mission_id: str | None = None,
-    severity: str | None = Query(None, regex="^(debug|info|warning|error|critical)$"),
+    severity: str | None = Query(None, pattern="^(debug|info|warning|error|critical)$"),
     source: str | None = None,
     _user: dict = Depends(require_auth),
 ):
@@ -92,7 +92,7 @@ async def get_boundary(_user: dict = Depends(require_auth)):
 @router.get("/replay")
 async def replay_events(
     since: float = Query(0.0, description="Unix timestamp to replay from"),
-    domain: str | None = Query(None, regex="^(runtime|lab|system)$"),
+    domain: str | None = Query(None, pattern="^(runtime|lab|system)$"),
     _user: dict = Depends(require_auth),
 ):
     """Replay events since a timestamp (oldest first)."""

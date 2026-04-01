@@ -13,6 +13,9 @@ import tempfile
 import time
 import types
 from collections import Counter
+import pytest
+pytestmark = pytest.mark.integration
+
 
 if 'structlog' not in sys.modules:
     sl = types.ModuleType('structlog')

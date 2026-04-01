@@ -59,7 +59,22 @@ class ImprovementProposal:
 
 
 def is_path_protected(path: str) -> bool:
-    """Check if a file path is in the protected scope."""
+    """
+    Check if a file path is protected from autonomous modification.
+
+    Delegates to the canonical protected_paths.is_protected() which maintains
+    the authoritative 3-tier protection list (exact files, directory prefixes,
+    substring patterns). Falls back to the local PROTECTED_RUNTIME set if
+    protected_paths is unavailable.
+    """
+    # Canonical gate — single source of truth
+    try:
+        from core.self_improvement.protected_paths import is_protected as _canonical_check
+        if _canonical_check(path):
+            return True
+    except ImportError:
+        pass
+    # Local fallback (subset of canonical — kept for safety during import errors)
     for protected in PROTECTED_RUNTIME:
         if path == protected or path.endswith("/" + protected):
             return True
@@ -67,7 +82,19 @@ def is_path_protected(path: str) -> bool:
 
 
 def is_path_allowed(path: str) -> bool:
-    """Check if a file path is in the allowed improvement scope."""
+    """
+    Check if a file path is in the allowed improvement scope.
+
+    A path is allowed only if:
+      1. It is NOT protected (canonical check via is_path_protected)
+      2. It falls within ALLOWED_SCOPE prefixes
+
+    This ensures the allowlist and the blocklist are always consistent —
+    a path cannot be both protected and allowed.
+    """
+    # Blocked paths are never allowed regardless of scope
+    if is_path_protected(path):
+        return False
     for allowed in ALLOWED_SCOPE:
         if path.startswith(allowed) or ("/" + allowed) in path:
             return True
@@ -76,10 +103,10 @@ def is_path_allowed(path: str) -> bool:
 
 def validate_proposal(proposal: ImprovementProposal) -> tuple[bool, str]:
     """Validate a self-improvement proposal against safety boundaries."""
-    # Check protected files
+    # Check protected files (delegates to canonical protected_paths)
     if proposal.target_file and is_path_protected(proposal.target_file):
         return False, f"REJECTED: {proposal.target_file} is in protected runtime scope"
-    
+
     # Check allowed scope
     if proposal.target_file and not is_path_allowed(proposal.target_file):
         return False, f"REJECTED: {proposal.target_file} is outside allowed improvement scope"

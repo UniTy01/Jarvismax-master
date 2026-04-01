@@ -5,23 +5,33 @@
 
 ---
 
-## Quick Start
+## Quick Start — Proven Path (verified 2026-04-01)
 
 ```bash
-# 1. Install (generates secrets, pulls images)
-bash scripts/install.sh
+# 1. Install dependencies
+pip install -r requirements.txt
+pip install langchain-anthropic   # if using Anthropic key
 
-# 2. Configure .env
-nano .env
-# Required: OPENAI_API_KEY
+# 2. Configure env
+cp .env.example .env
+# Edit .env — minimum required:
+#   ANTHROPIC_API_KEY=sk-ant-...   (or OPENROUTER_API_KEY / OPENAI_API_KEY)
+#   MODEL_FALLBACK=anthropic       (required when using Anthropic without OpenRouter)
+#   JARVIS_SECRET_KEY=<openssl rand -hex 32>
+#   JARVIS_ADMIN_PASSWORD=<password>
 
-# 3. Launch
+# 3. Start Qdrant
+docker run -d -p 6333:6333 qdrant/qdrant:v1.9.7
+
+# 4. Start the API
 python main.py
-# Or via Docker:
-docker compose up jarvis
+
+# 5. Verify (must exit 0)
+JARVIS_ADMIN_PASSWORD=<password> bash scripts/verify_boot.sh
 ```
 
-The Jarvis app connects to `http://<server>:8000`.
+**See [RUNBOOK.md](RUNBOOK.md) for the full setup guide.**
+**See [RUNTIME_TRUTH.md](RUNTIME_TRUTH.md) for current proven capabilities.**
 
 ---
 
@@ -40,15 +50,23 @@ Jarvis App / API (port 8000)  ← PRIMARY INTERFACE
 
 **Couches du code source :**
 ```
-api/                  → FastAPI + routes (objectives, self-improvement, missions)
-core/                 → Orchestration + planner + memory + self-improvement
-core/self_improvement/→ CANONICAL self-improvement pipeline
-agents/               → 9 agents + crew parallèle
-executor/             → Secure execution + retry + mission_result
-tests/                → 280+ tests
+api/                  → FastAPI + routes (150+ endpoints, v1/v2/v3)
+core/                 → Orchestration + planner + memory + self-improvement (367 py files)
+core/self_improvement/→ CANONICAL self-improvement pipeline (weakness→patch→test→score→promote)
+kernel/               → Capability registry, policy, memory interfaces, kernel contracts
+agents/               → 9 agents + crew parallèle + kernel bridge
+security/             → SecurityLayer (6 active rules) + audit trail + policy ruleset
+business/             → Business orchestration layer (assisted, not autonomous)
+tests/                → 37 focused regression tests (green); smoke tests require --run-infra-tests
 ```
 
+> **Maturity note:** This is an **internal beta** platform. The core orchestration,
+> mission lifecycle, and LLM execution path are proven. Business and cyber layers
+> are LLM-assisted scaffolding, not production automation.
+> **Qdrant is required** for the core mission path. Redis, Postgres, n8n, Ollama are optional.
+
 > Voir [ARCHITECTURE.md](ARCHITECTURE.md) pour le schéma complet des couches.
+> Voir [RELEASE_READINESS.md](RELEASE_READINESS.md) pour l'état de maturité actuel.
 
 ---
 
@@ -68,21 +86,31 @@ tests/                → 280+ tests
 
 ## API Endpoints
 
+> **v3 is the canonical API.** v1/v2 routes remain for compatibility.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v2/missions/submit` | Submit a mission |
-| GET | `/api/v2/missions/{id}` | Mission status |
-| POST | `/api/v2/tasks/{id}/approve` | Approve action |
-| POST | `/api/v2/tasks/{id}/reject` | Reject action |
+| POST | `/api/v3/missions` | Submit a mission (canonical) |
+| GET | `/api/v3/missions/{mission_id}` | Mission status |
+| POST | `/api/v3/missions/{mission_id}/approve` | Approve pending action |
+| POST | `/api/v3/missions/{mission_id}/reject` | Reject pending action |
+| GET | `/api/v3/missions` | List all missions |
 | GET | `/api/v2/status` | System status |
 | GET | `/api/v2/agents` | Agent registry |
 | POST | `/api/v2/self-improve/run` | Trigger self-improvement |
+| GET | `/health` | Health check |
+| GET | `/kernel/status` | Kernel runtime status |
+
+> Legacy aliases: `/api/v2/missions/submit`, `/api/v1/mission/run`, `/api/mission`
 
 ### Approval Flow
 
 For MEDIUM/HIGH risk actions, JarvisMax requests approval via the API:
-- `POST /api/v2/tasks/{id}/approve` → execute
-- `POST /api/v2/tasks/{id}/reject` → cancel
+- `POST /api/v3/missions/{mission_id}/approve` → execute
+- `POST /api/v3/missions/{mission_id}/reject` → cancel
+
+> Note: `/api/v2/tasks/{id}/approve` listed in older docs does not exist.
+> Use the mission-level approval endpoints above.
 
 ---
 
@@ -98,17 +126,21 @@ For MEDIUM/HIGH risk actions, JarvisMax requests approval via the API:
 
 ## Les 9 agents
 
-| Agent            | Rôle                        | LLM            |
-|------------------|-----------------------------|----------------|
-| AtlasDirector    | Chef d'orchestre / planning | GPT-4o         |
-| ScoutResearch    | Recherche et synthèse       | GPT-4o-mini    |
-| MapPlanner       | Plans et roadmaps           | GPT-4o-mini    |
-| ForgeBuilder     | Code, scripts, fichiers     | Claude/GPT-4o  |
-| LensReviewer     | Contrôle qualité            | Claude/GPT-4o  |
-| VaultMemory      | Mémoire long terme          | Ollama (local) |
-| ShadowAdvisor    | Perspectives alternatives   | Ollama (local) |
-| PulseOps         | Préparation d'actions       | GPT-4o-mini    |
-| NightWorker      | Missions longues            | GPT-4o         |
+The LLM used per agent is configured by the active provider strategy (see `.env.example`).
+The default path uses your configured `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY`.
+ScoutResearch and ForgeBuilder are proven active; LensReviewer has intermittent failures (KL-005).
+
+| Agent            | Rôle                        | Status (2026-04-01) |
+|------------------|-----------------------------|---------------------|
+| AtlasDirector    | Chef d'orchestre / planning | Active |
+| ScoutResearch    | Recherche et synthèse       | ✅ Proven active |
+| MapPlanner       | Plans et roadmaps           | Active |
+| ForgeBuilder     | Code, scripts, fichiers     | ✅ Proven active |
+| LensReviewer     | Contrôle qualité            | ⚠️ Intermittent (KL-005) |
+| VaultMemory      | Mémoire long terme          | Active (requires Qdrant) |
+| ShadowAdvisor    | Perspectives alternatives   | Active |
+| PulseOps         | Préparation d'actions       | Active |
+| NightWorker      | Missions longues            | Active |
 
 ---
 
@@ -131,17 +163,14 @@ workspace/
 
 ## Configuration LLM
 
-Jarvis choisit automatiquement le meilleur modèle par rôle :
+Model selection is driven by `MODEL_STRATEGY` + `MODEL_FALLBACK`. The model router
+(`core/model_intelligence/selector.py`) picks the best available model per task class.
+Evidence accumulates in `data/model_performance.json` from real usage.
 
-```
-director  → OpenAI GPT-4o    (ou Ollama si pas d'API)
-builder   → Anthropic Claude  (ou GPT-4o si pas d'API Anthropic)
-reviewer  → Anthropic Claude
-advisor   → Ollama local      (toujours local, isolation des données)
-memory    → Ollama local
-```
-
-Fonctionne **sans aucune API externe** (tout sur Ollama).
+**Proven configurations:**
+- `MODEL_STRATEGY=anthropic` + `ANTHROPIC_API_KEY` → all agents use Claude (Haiku by default)
+- `MODEL_STRATEGY=openrouter` + `OPENROUTER_API_KEY` → routes to any of 348 available models
+- Ollama (local): supported via `MODEL_STRATEGY=ollama` but not on the proven E2E path
 
 ---
 
@@ -204,16 +233,18 @@ crew.add(MyAgent(settings))
 
 ## Variables .env clés
 
-| Variable                    | Description                    | Requis |
-|-----------------------------|--------------------------------|--------|
-| `OPENAI_API_KEY`            | OpenAI API key                 | ✅     |
-| `POSTGRES_PASSWORD`         | PostgreSQL password             | ✅     |
-| `REDIS_PASSWORD`            | Mot de passe Redis             | ✅     |
-| `OPENAI_API_KEY`            | Clé API OpenAI                 | ⚡     |
-| `ANTHROPIC_API_KEY`         | Clé API Anthropic              | —      |
-| `DRY_RUN`                   | `true` = simuler sans exécuter | —      |
+See `.env.example` for the full documented list. Minimum for a working run:
 
-⚡ = Au moins un provider LLM requis (OpenAI ou Ollama seul suffit)
+| Variable                    | Description                       | Required |
+|-----------------------------|-----------------------------------|----------|
+| `ANTHROPIC_API_KEY`         | Anthropic API key (proven path)    | One LLM key required |
+| `OPENROUTER_API_KEY`        | OpenRouter key (preferred for prod)| One LLM key required |
+| `OPENAI_API_KEY`            | OpenAI API key                    | One LLM key required |
+| `MODEL_FALLBACK`            | Fallback provider when primary has no key | Required if using Anthropic without OpenRouter |
+| `QDRANT_HOST`               | Qdrant hostname (`localhost` dev)  | ✅ |
+| `JARVIS_SECRET_KEY`         | JWT signing secret (32+ chars)     | ✅ |
+| `JARVIS_ADMIN_PASSWORD`     | Admin user password                | ✅ |
+| `DRY_RUN`                   | `true` = stub LLM responses        | — |
 
 ---
 

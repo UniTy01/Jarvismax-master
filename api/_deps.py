@@ -62,10 +62,30 @@ def get_start_time() -> float:
     return _start_time
 
 
+_REQUIRE_AUTH: bool = os.getenv("JARVIS_REQUIRE_AUTH", "").lower() in ("1", "true", "yes")
+
+
 def _check_auth(token: str | None, authorization: str | None = None) -> None:
-    """Validate API token or JWT. Accepts X-Jarvis-Token or Authorization: Bearer."""
+    """Validate API token or JWT. Accepts X-Jarvis-Token or Authorization: Bearer.
+
+    Auth enforcement matrix:
+      JARVIS_API_TOKEN set   → token validation enforced (normal path)
+      JARVIS_API_TOKEN unset + JARVIS_REQUIRE_AUTH=true  → 503 "Auth not configured"
+      JARVIS_API_TOKEN unset + JARVIS_REQUIRE_AUTH unset → auth disabled (dev only)
+    """
     if not _API_TOKEN:
-        return  # No token configured — auth disabled
+        if _REQUIRE_AUTH:
+            # JARVIS_REQUIRE_AUTH=true but no token configured — operator error,
+            # refuse all requests rather than silently allowing unauthenticated access.
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Authentication is required (JARVIS_REQUIRE_AUTH=true) "
+                    "but JARVIS_API_TOKEN is not configured. "
+                    "Set JARVIS_API_TOKEN in your environment."
+                ),
+            )
+        return  # No token configured and require_auth not set — auth disabled (dev mode)
 
     # Extract bearer token from Authorization header (centralized)
     from api.token_utils import strip_bearer

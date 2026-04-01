@@ -1,7 +1,10 @@
 """tests/test_vector_memory.py — Vector memory layer tests."""
 import os, sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import pytest
+pytestmark = pytest.mark.integration
+
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 
 class TestVectorMemoryEntry:

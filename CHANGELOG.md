@@ -4,6 +4,74 @@ Format : `type: description (commit hash)`
 
 ---
 
+## [Pass 34 — Security Hardening & Observability Completion] — 2026-03-31
+
+### Sécurité production (critique)
+- `feat`: `config/settings.py` + `main.py` — ajout de `enforce_production_secrets()`. Si `JARVIS_PRODUCTION=1`, le démarrage échoue avec `RuntimeError` si `JARVIS_SECRET_KEY` est la valeur par défaut, `JARVIS_ADMIN_PASSWORD` est absent, ou `JARVIS_API_TOKEN` est absent. Empêche le déploiement avec des credentials non sécurisés.
+- `feat`: `api/_deps.py` — ajout du guard `JARVIS_REQUIRE_AUTH`. Si défini et `JARVIS_API_TOKEN` absent, tous les endpoints retournent HTTP 503 au lieu d'autoriser silencieusement les accès non authentifiés.
+
+### Self-improvement safety
+- `fix`: `core/self_improvement/safety_boundary.py` — `is_path_allowed()` ne consultait pas `is_path_protected()`. Un fichier pouvait simultanément être dans `ALLOWED_SCOPE` et `PROTECTED_RUNTIME`. Corrigé : `is_path_allowed()` délègue à `is_path_protected()` (qui lui-même délègue à `protected_paths.is_protected()`) comme première gate.
+- `fix`: `core/self_improvement/safety_boundary.py` — `is_path_protected()` utilisait uniquement le set local `PROTECTED_RUNTIME`. Corrigé : délégation prioritaire à `protected_paths.is_protected()` (3 niveaux de protection : fichiers exacts, préfixes répertoires, patterns substring).
+
+### Infrastructure de tests
+- `feat`: `pytest.ini` — section `markers` ajoutée avec le mark `integration` documenté. `pytest -m "not integration"` exclut les 20 fichiers dépendants de Qdrant/Redis.
+- `feat`: 20 fichiers de tests — ajout de `pytestmark = pytest.mark.integration` sur tous les tests nécessitant Qdrant, Redis ou un LLM réel. Le CI rapide peut maintenant s'exécuter sans infrastructure externe.
+
+### Observabilité / Readiness
+- `feat`: `api/routes/convergence.py` — nouvel endpoint `GET /api/v3/system/readiness`. Vérifie : présence d'au moins une clé LLM, connectivité TCP à Qdrant (timeout 2s), initialisation du MetaOrchestrator. Retourne HTTP 200 (ready) ou HTTP 503 (not_ready). Conçu pour Kubernetes readinessProbe.
+
+---
+
+## [Pass 33 — Phase 2 Finishing Pass] — 2026-03-31
+
+### Bugs critiques
+- `fix`: `core/orchestration_bridge.py` — `_bridge_enabled()` retournait `False` par défaut. Le bridge canonique n'était jamais activé même quand v3 le demandait. Corrigé : même logique que `_use_canonical()` (défaut True).
+- `fix`: `api/routes/convergence.py` — le chemin legacy `reject_mission` appelait `ms.get()` au lieu de `ms.reject()`. Fausse réussite : la mission n'était jamais rejetée. Corrigé.
+- `fix`: `core/meta_orchestrator.py` — double docstring dans `run_mission()`. Le premier (avec `force_approved=True`) était écrasé. Supprimé le doublon.
+
+### Configuration / Startup
+- `fix`: `config/settings.py` — `validate_security()` n'avertissait pas sur `JARVIS_ADMIN_PASSWORD` manquant (fallback sur JWT secret = réutilisation de credential) ni sur `JARVIS_API_TOKEN` manquant (tous les endpoints non authentifiés). Deux warnings ajoutés.
+- `fix`: `main.py` — `except Exception: pass` sur `ensure_dirs()` au démarrage → `log.warning(...)`.
+
+### CI/CD
+- `fix`: `kernel_ci.yml` — `pull_request.branches: [master]` → `[main]`. Les PRs vers `main` ne déclenchaient pas la validation K1.
+
+### Observabilité
+- `fix`: `api/routes/approval.py` — endpoint `reject_action` avalait silencieusement les exceptions. Ajout de `logger.warning(...)`.
+
+### Infrastructure de tests
+- `fix`: `core/improvement_daemon.py` — `reset_daemon_state()` mutait `os.environ["JARVIS_SKIP_IMPROVEMENT_GATE"]` de façon permanente → contamination cross-tests. Effet de bord supprimé.
+- `fix`: `conftest.py` — `JARVIS_SKIP_IMPROVEMENT_GATE=1` maintenant défini proprement via `os.environ.setdefault()` à l'init de la session pytest.
+- `fix`: `tests/test_cognitive_events.py:983` — `assert True` remplacé par une vraie assertion sur le contenu du README.
+
+### Docs
+- `docs`: `RELEASE_JUDGMENT_PHASE2.md` — rapport complet : 9 bugs corrigés, gaps restants, niveaux de maturité par zone, top 10 prochaines tâches.
+
+## [Pass 32 — Engineering Hardening] — 2026-03-31
+
+### CI/CD (critique)
+- `fix`: `deploy.yml` — `branches: [master]` → `[main]`; condition `refs/heads/master` → `refs/heads/main`. Le pipeline de déploiement ne se déclenchait jamais sur aucun push.
+- `fix`: `kernel_ci.yml` — scanner K1 levait `AttributeError` sur `ast.Module` (pas de `col_offset`). Correction : vérifier `isinstance(node, (ast.ImportFrom, ast.Import))` avant d'accéder à `col_offset`. Faux positifs sur les imports lazy éliminés.
+
+### Routing canonique
+- `fix`: `api/routes/convergence.py` — `_use_canonical()` retournait `False` par défaut. L'API v3 routait silencieusement vers `MissionSystem` legacy au lieu de `MetaOrchestrator`. Corrigé : défaut `True`, opt-out via `JARVIS_USE_CANONICAL_ORCHESTRATOR=0`.
+
+### Fiabilité
+- `fix`: `api/routes/missions.py` — `except Exception: pass` dans le bloc de complétion de mission. Erreurs silencieuses → loggées avec `mission_completion_failed`.
+
+### Infrastructure de tests
+- `fix`: `tests/test_integration_kernel_security_business.py` — `def test(name, fn)` collecté par pytest comme fixture test. Renommé `_run_test` + wrapper pytest ajouté. 31/31 R1-R10 passent.
+- `feat`: `conftest.py` — pré-charge les vrais modules avant la collecte pytest pour éviter la contamination par les mocks.
+
+### Vérité documentaire
+- `fix`: `README.md` — comptages précis (367 fichiers Python core, 227 fichiers de tests), endpoints fantômes supprimés (`/api/v2/tasks/{id}/approve`), note de maturité "alpha interne".
+- `docs`: `ENGINEERING_REPORT.md` — rapport complet de la passe 32 : 9 corrections, 5 gaps restants, jugement de production-readiness, 10 prochaines tâches.
+
+### Hygiène
+- `cleanup`: 106+ docs historiques archivés de `docs/` vers `docs/archive/`
+- `fix`: `.gitignore` — ajout de `pytest-cache-files-*/`
+
 ## [Unreleased] — 2026-03-25
 
 ### Nettoyage architectural

@@ -885,10 +885,13 @@ def get_daemon_status() -> dict:
 
 
 def reset_daemon_state() -> None:
-    """Reset state (for tests)."""
-    import os as _os
+    """Reset state (for tests).
+
+    NOTE: If the gate security check also needs to be bypassed in tests,
+    set JARVIS_SKIP_IMPROVEMENT_GATE=1 in the test environment directly.
+    This function does NOT mutate the process environment — callers are
+    responsible for setting/unsetting that flag to avoid cross-test contamination.
+    """
     global _state
     _state = DaemonState()
     _cooldown_tracker.reset()
-    # Signal gate to bypass security check in tests
-    _os.environ["JARVIS_SKIP_IMPROVEMENT_GATE"] = "1"

@@ -61,8 +61,8 @@ def create_api(settings) -> FastAPI:
     async def _jarvis_startup():
         try:
             s.ensure_dirs()
-        except Exception:
-            pass
+        except Exception as _dir_err:
+            log.warning("startup_ensure_dirs_failed", err=str(_dir_err)[:120])
 
         # ── 1. Boot kernel runtime (FIRST — kernel is the foundation) ──────────
         # The kernel provides: capabilities, policy, memory interfaces, events.
@@ -329,6 +329,30 @@ async def main() -> None:
     s = get_settings()
     s.ensure_dirs()
 
+    # Hard-fail if no LLM key is configured (and not in DRY_RUN mode).
+    # Without an LLM key the system can boot but will fail on every mission.
+    # Fail early rather than silently booting into a broken state.
+    s.enforce_llm_key()
+
+    # Hard-fail if JARVIS_PRODUCTION=true and secrets are insecure.
+    # This raises RuntimeError immediately — no partial boot allowed.
+    s.enforce_production_secrets()
+
+    # ── Bounded self-improvement: force off in production mode ───────────────
+    # SELF_IMPROVE_ENABLED=true is allowed in dev/alpha but must never activate
+    # autonomously in production. This override prevents .env drift from enabling
+    # it accidentally. An operator must make an explicit, deliberate decision.
+    import os as _os
+    if s.production_mode and s.self_improve_enabled:
+        _os.environ["SELF_IMPROVE_ENABLED"] = "false"
+        log.warning(
+            "si_forced_off_in_production",
+            reason=(
+                "SELF_IMPROVE_ENABLED overridden to false in JARVIS_PRODUCTION mode. "
+                "Self-improvement must not run autonomously in production without explicit review."
+            ),
+        )
+
     for warn in s.validate_security():
         log.warning("security_config_warning", detail=warn)
 
@@ -338,7 +362,42 @@ async def main() -> None:
         version=s.jarvis_version,
         dry_run=s.dry_run,
         model_strategy=s.model_strategy,
+        self_improve_active=s.self_improve_enabled and not s.production_mode,
+        production_mode=s.production_mode,
     )
+
+    # ── Model catalog auto-refresh ────────────────────────────────────────────
+    # If OPENROUTER_API_KEY is set and the catalog is stale (>24h), trigger a
+    # background refresh so the selector has current model availability and pricing.
+    # Fail-open: a failed or slow refresh never blocks startup or serves a request.
+    if getattr(s, "openrouter_api_key", ""):
+        import threading as _threading
+        import time as _time
+
+        def _bg_catalog_refresh() -> None:
+            try:
+                from core.model_intelligence.catalog import ModelCatalog
+                cat = ModelCatalog()
+                stale_threshold = 24 * 3600  # 24 hours
+                age = _time.time() - cat._last_refresh
+                if age > stale_threshold:
+                    log.info(
+                        "catalog_refresh_triggered",
+                        age_hours=round(age / 3600, 1),
+                        reason="stale_on_startup",
+                    )
+                    count = cat.refresh(api_key=s.openrouter_api_key)
+                    log.info("catalog_refresh_complete", models_loaded=count)
+                else:
+                    log.debug(
+                        "catalog_refresh_skipped",
+                        age_hours=round(age / 3600, 1),
+                        reason="fresh_enough",
+                    )
+            except Exception as _exc:
+                log.warning("catalog_refresh_error", err=str(_exc)[:120])
+
+        _threading.Thread(target=_bg_catalog_refresh, daemon=True, name="catalog-refresh").start()
 
     api    = create_api(s)
     config = uvicorn.Config(

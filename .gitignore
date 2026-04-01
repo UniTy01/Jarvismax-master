@@ -49,6 +49,9 @@ Thumbs.db
 # ── Patch journal / debug ────────────────────────────────────
 workspace/patch_journal.jsonl
 
+# ── Pytest cache dirs (named or default) ─────────────────────
+pytest-cache-files-*/
+
 # ── Workspace runtime (DB WAL/SHM, logs) ─────────────────────
 workspace/*.log
 workspace/*.db-shm

@@ -141,9 +141,11 @@ class Mission {
       final dt = j['decision_trace'] as Map?;
       return Mission(
         id: _s(j['id'] ?? j['mission_id']),
-        userInput: _s(j['user_input']),
+        // Canonical v3 uses 'goal'; legacy v1/v2 uses 'user_input'
+        userInput: _s(j['user_input'] ?? j['goal']),
         intent: _s(j['intent'], 'OTHER'),
-        status: _s(j['status'], 'UNKNOWN'),
+        // Normalize: canonical v3 returns 'COMPLETED'/'CANCELLED', app uses 'DONE'/'FAILED'
+        status: _normalizeStatus(_s(j['status'], 'UNKNOWN')),
         planSummary: _s(j['plan_summary']),
         planSteps: _lmap(j['plan_steps']),
         advisoryScore: _d(j['advisory_score']),
@@ -157,14 +159,17 @@ class Mission {
         note: _s(j['note']),
         agentOutputs: _mstr(j['agent_outputs']),
         approvalReason: j['approval_reason']?.toString(),
+        // Canonical v3 uses 'result'; legacy uses 'final_output' or 'output'
         finalOutput:
-            j['final_output']?.toString() ?? j['output']?.toString() ?? '',
-        selectedAgents: _lstr(j['agents_selected']),
+            j['final_output']?.toString() ?? j['result']?.toString() ?? j['output']?.toString() ?? '',
+        // Canonical v3 returns agents as list under 'agents'; legacy uses 'agents_selected'
+        selectedAgents: _lstr(j['agents_selected'] ?? j['agents']),
         skippedAgents: _lstr(j['skipped_agents']),
         confidenceScore: _d(j['confidence_score']),
         riskScore: _i(j['risk_score']),
         complexity: _s(j['complexity']),
-        finalOutputSource: _s(j['final_output_source']),
+        // Canonical v3 uses 'source_system' as a proxy for finalOutputSource
+        finalOutputSource: _s(j['final_output_source'] ?? j['source_system']),
         fallbackLevelUsed: _i(j['fallback_level_used']),
         approvalDecision: _s(j['approval_decision']),
         policyModeUsed: _s(dt?['policy_mode_used']),
@@ -180,6 +185,17 @@ class Mission {
     } catch (e) {
       debugPrint('Mission.fromJson error: $e');
       return Mission.empty();
+    }
+  }
+
+  /// Normalize canonical API status to the vocabulary the app uses internally.
+  /// Canonical v3 returns 'COMPLETED' and 'CANCELLED'; app was built around 'DONE'/'FAILED'.
+  /// This maps them through so existing status checks (isDone, isTerminal) remain correct.
+  static String _normalizeStatus(String raw) {
+    switch (raw) {
+      case 'COMPLETED': return 'DONE';
+      case 'CANCELLED': return 'FAILED';
+      default:          return raw;
     }
   }
 

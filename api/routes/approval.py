@@ -46,4 +46,5 @@ async def reject_action(item_id: str, rejected_by: str = "human"):
         success = reject(item_id, rejected_by)
         return {"success": success, "item_id": item_id}
     except Exception as e:
+        logger.warning(f"[API] approval/reject error: {e}")
         return {"success": False, "error": str(e)}

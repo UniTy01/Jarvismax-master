@@ -102,8 +102,8 @@ from core.self_improvement.sandbox_executor import (
     FailureCategory, _scrub_secrets,
 )
 from core.self_improvement.test_runner import (
-    TestRunner, TestSuiteResult, RegressionReport, ValidationReport,
-    ExperimentReport,
+    PatchRunner as TestRunner, SuiteResult as TestSuiteResult,
+    RegressionReport, ValidationReport, ExperimentReport,
 )
 from core.self_improvement.promotion_pipeline import (
     PromotionPipeline, CandidatePatch, PromotionDecision, PatchIntent as PPIntent,
@@ -646,8 +646,12 @@ class TestPromotionPipeline:
         # Verify no leftover sandbox
         sandbox_dir = tmp_repo / ".sandbox"
         if sandbox_dir.exists():
-            # Any remaining dirs should be inactive
-            assert True  # Cleanup ran without exception
+            # Any active (non-cleaned-up) sandbox subdirectories indicate a cleanup failure.
+            active_sandboxes = [d for d in sandbox_dir.iterdir() if d.is_dir()]
+            assert not active_sandboxes, (
+                f"Sandbox cleanup failed — {len(active_sandboxes)} leftover sandbox dir(s): "
+                + ", ".join(d.name for d in active_sandboxes[:5])
+            )
 
 
 # ═══════════════════════════════════════════════════════════════

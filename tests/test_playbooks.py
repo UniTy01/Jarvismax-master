@@ -12,6 +12,8 @@ Validates:
 """
 import json
 import pytest
+pytestmark = pytest.mark.integration
+
 from core.planning.playbook import (
     Playbook, PlaybookStep, PlaybookRegistry,
     PlaybookPerformanceTracker, execute_playbook,

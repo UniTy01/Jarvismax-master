@@ -45,6 +45,7 @@ class AccessResult:
 _PUBLIC_PATHS = {
     "/health",
     "/api/v2/health",
+    "/api/v3/system/readiness",   # Required: Docker healthcheck + verify_boot.sh call this without auth
     "/",
     "/index.html",
     "/dashboard.html",

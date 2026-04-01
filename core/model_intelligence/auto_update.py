@@ -230,7 +230,7 @@ class ModelAutoUpdate:
             for tc in TASK_CLASSES:
                 if tc in self._active_tests:
                     continue
-                ranked = perf.get_best_for_task(tc, min_samples=2)
+                ranked = perf.get_best_for_task(tc, min_samples=AB_MIN_SAMPLES)
                 if len(ranked) >= 2:
                     diff = abs(ranked[0].get("avg_quality", 0) - ranked[1].get("avg_quality", 0))
                     if diff < AB_TEST_THRESHOLD:
@@ -239,6 +239,8 @@ class ModelAutoUpdate:
                             "model_a": ranked[0]["model_id"],
                             "model_b": ranked[1]["model_id"],
                             "quality_diff": round(diff, 3),
+                            "samples_a": ranked[0].get("samples", 0),
+                            "samples_b": ranked[1].get("samples", 0),
                         })
         except Exception:
             pass

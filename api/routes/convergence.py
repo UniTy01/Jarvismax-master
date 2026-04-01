@@ -30,7 +30,7 @@ from typing import Optional
 from api._deps import _check_auth
 
 try:
-    from fastapi import Depends, APIRouter, Body, Header, HTTPException, WebSocket, WebSocketDisconnect
+    from fastapi import BackgroundTasks, Depends, APIRouter, Body, Header, HTTPException, WebSocket, WebSocketDisconnect
     from fastapi.responses import JSONResponse
 except ImportError:
     # Stub for syntax validation without fastapi
@@ -68,7 +68,10 @@ router = APIRouter(prefix="/api/v3", tags=["convergence"], dependencies=[Depends
 
 
 def _use_canonical() -> bool:
-    return os.environ.get("JARVIS_USE_CANONICAL_ORCHESTRATOR", "").lower() in ("1", "true", "yes")
+    # Default TRUE — v3 API always uses the canonical orchestrator bridge.
+    # Set JARVIS_USE_CANONICAL_ORCHESTRATOR=0 to fall back to legacy MissionSystem.
+    val = os.environ.get("JARVIS_USE_CANONICAL_ORCHESTRATOR", "1").lower()
+    return val not in ("0", "false", "no")
 
 
 def _ok(data, status: int = 200) -> JSONResponse:
@@ -86,12 +89,12 @@ def _err(msg: str, status: int = 400) -> JSONResponse:
 
 
 @router.post("/missions")
-async def submit_mission(body: dict = Body(...)):
+async def submit_mission(body: dict = Body(...), background_tasks: BackgroundTasks = None):
     """
     Submit a new mission.
 
     When canonical orchestrator enabled:
-      → OrchestrationBridge.submit() → MetaOrchestrator
+      → OrchestrationBridge.submit() → MetaOrchestrator (background execution)
     When disabled:
       → MissionSystem.submit() (legacy)
     """
@@ -104,6 +107,19 @@ async def submit_mission(body: dict = Body(...)):
             try:
                 from core.orchestration_bridge import submit_mission as bridge_submit
                 result = bridge_submit(goal)
+                mission_id = result.get("mission_id")
+                # Trigger real execution in background — without this, mission stays READY forever
+                if background_tasks and mission_id and result.get("ok"):
+                    _goal_capture = goal
+                    _mid_capture = mission_id
+                    async def _execute_canonical():
+                        try:
+                            from core.meta_orchestrator import get_meta_orchestrator
+                            mo = get_meta_orchestrator()
+                            await mo.run_mission(_goal_capture, mission_id=_mid_capture)
+                        except Exception as _exc:
+                            log.warning("canonical_execution_failed", mission_id=_mid_capture, err=str(_exc)[:120])
+                    background_tasks.add_task(_execute_canonical)
                 return _ok(result, status=201)
             except Exception as e:
                 log.warning("canonical_submit_fallback", err=str(e)[:80])
@@ -224,10 +240,10 @@ async def reject_mission(mission_id: str, body: dict = Body(default={})):
 
         from core.mission_system import get_mission_system
         ms = get_mission_system()
-        result = ms.get(mission_id)
+        result = ms.reject(mission_id, note=note)
         if result is None:
-            return _err(f"Mission '{mission_id}' not found.", status=404)
-        return _ok({"rejected": True, "mission_id": mission_id})
+            return _err(f"Mission '{mission_id}' not found or already terminal.", status=404)
+        return _ok(result.to_dict())
 
     except Exception as e:
         return _err(str(e)[:200], status=500)
@@ -340,6 +356,100 @@ async def system_health():
         "status": "healthy" if healthy else "degraded",
         "checks": checks,
     })
+
+
+@router.get("/system/readiness")
+async def system_readiness():
+    """
+    Readiness probe — returns HTTP 200 only when the system can process missions.
+
+    Unlike /system/health (which checks imports), this checks LIVE connectivity
+    to external infrastructure required for real mission execution.
+
+    HTTP 200 → system is ready to process missions
+    HTTP 503 → system is not ready (infra missing or LLM unavailable)
+
+    Checks:
+      - At least one LLM API key is configured
+      - Qdrant is reachable (if configured)
+      - Core orchestrator initializes without error
+
+    Designed for Kubernetes readinessProbe / load balancer health gates.
+    """
+    import socket
+    from fastapi.responses import JSONResponse as _JSONResponse
+
+    probes: dict[str, dict] = {}
+    ready = True
+
+    # 1. LLM key availability — report which providers are active
+    try:
+        from config.settings import get_settings
+        import os
+        s = get_settings()
+        active_providers = []
+        if getattr(s, "openrouter_api_key", ""):
+            active_providers.append("openrouter")
+        if getattr(s, "anthropic_api_key", ""):
+            active_providers.append("anthropic")
+        if getattr(s, "openai_api_key", ""):
+            active_providers.append("openai")
+        has_llm = bool(active_providers)
+        # Determine primary provider (from MODEL_STRATEGY env, or first available)
+        model_strategy = os.environ.get("MODEL_STRATEGY", "") or (active_providers[0] if active_providers else "none")
+        model_fallback = os.environ.get("MODEL_FALLBACK", "")
+        if has_llm:
+            detail = f"providers={active_providers} strategy={model_strategy}"
+            if model_fallback:
+                detail += f" fallback={model_fallback}"
+        else:
+            detail = "no LLM key — cannot process missions (set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY)"
+        probes["llm_key"] = {"ok": has_llm, "detail": detail, "providers": active_providers, "strategy": model_strategy}
+        if not has_llm:
+            ready = False
+    except Exception as e:
+        probes["llm_key"] = {"ok": False, "detail": str(e)[:80]}
+        ready = False
+
+    # 2. Qdrant connectivity (non-blocking TCP check, 2s timeout)
+    try:
+        from config.settings import get_settings
+        s = get_settings()
+        qdrant_host = getattr(s, "qdrant_host", "") or "qdrant"
+        qdrant_port = getattr(s, "qdrant_port", 6333) or 6333
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        result = sock.connect_ex((qdrant_host, int(qdrant_port)))
+        sock.close()
+        qdrant_ok = result == 0
+        probes["qdrant"] = {
+            "ok": qdrant_ok,
+            "host": f"{qdrant_host}:{qdrant_port}",
+            "detail": "reachable" if qdrant_ok else "unreachable — vector memory unavailable",
+        }
+        if not qdrant_ok:
+            ready = False
+    except Exception as e:
+        probes["qdrant"] = {"ok": False, "detail": str(e)[:80]}
+        ready = False
+
+    # 3. MetaOrchestrator importable and initializable
+    try:
+        from core.meta_orchestrator import get_meta_orchestrator
+        mo = get_meta_orchestrator()
+        probes["orchestrator"] = {"ok": True, "detail": f"circuit_breaker={mo._circuit_breaker.status()['open']}"}
+    except Exception as e:
+        probes["orchestrator"] = {"ok": False, "detail": str(e)[:80]}
+        ready = False
+
+    status_code = 200 if ready else 503
+    body = {
+        "ok": ready,
+        "ready": ready,
+        "status": "ready" if ready else "not_ready",
+        "probes": probes,
+    }
+    return _JSONResponse({"ok": ready, "data": body}, status_code=status_code)
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -62,8 +62,13 @@ from core.canonical_types import (
 # ═══════════════════════════════════════════════════════════════
 
 def _bridge_enabled() -> bool:
-    """Check if canonical orchestration bridge is active."""
-    return os.environ.get("JARVIS_USE_CANONICAL_ORCHESTRATOR", "").lower() in ("true", "1", "yes")
+    """Check if canonical orchestration bridge is active.
+
+    Default TRUE — matches convergence._use_canonical() default.
+    Opt-out via JARVIS_USE_CANONICAL_ORCHESTRATOR=0|false|no.
+    """
+    val = os.environ.get("JARVIS_USE_CANONICAL_ORCHESTRATOR", "1").lower()
+    return val not in ("0", "false", "no")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -86,6 +91,120 @@ class OrchestrationBridge:
 
     def __init__(self):
         self._canonical_missions: dict[str, CanonicalMissionContext] = {}
+        # SQLite persistence — graceful degradation if unavailable
+        try:
+            from core.canonical_mission_store import CanonicalMissionStore
+            self._store: Any = CanonicalMissionStore()
+            # Warm in-memory cache from persisted state (restart safety)
+            for ctx in self._store.load_all():
+                self._canonical_missions[ctx.mission_id] = ctx
+            log.info(
+                "bridge.store_loaded",
+                missions_restored=len(self._canonical_missions),
+            )
+        except Exception as exc:
+            log.warning("bridge.store_unavailable", err=str(exc)[:120])
+            self._store = None
+
+    def _update_cache(self, ctx: CanonicalMissionContext) -> None:
+        """Update in-memory cache, persist to SQLite, and record performance evidence."""
+        _TERMINAL = {"COMPLETED", "FAILED", "CANCELLED"}
+        prev = self._canonical_missions.get(ctx.mission_id)
+        prev_terminal = prev is not None and prev.status.value in _TERMINAL
+        new_terminal = ctx.status.value in _TERMINAL
+
+        self._canonical_missions[ctx.mission_id] = ctx
+        if self._store is not None:
+            self._store.save(ctx)
+
+        # Record performance evidence on first terminal transition only.
+        # Fail-open: a recording error must never affect mission lifecycle.
+        if new_terminal and not prev_terminal:
+            try:
+                self._record_performance_evidence(ctx)
+            except Exception as _exc:
+                log.warning("bridge.perf_record_error", err=str(_exc)[:80])
+
+    def _record_performance_evidence(self, ctx: CanonicalMissionContext) -> None:
+        """
+        Write mission outcome to ModelPerformanceMemory.
+
+        The model credited is the first entry in ctx.agents_selected (if available),
+        falling back to the current MODEL_STRATEGY setting.
+        Duration is estimated from created_at if available, otherwise 0.
+
+        This record feeds the model selector's quality scoring loop.
+        Evidence accumulates over real use — no synthetic data.
+        """
+        from core.model_intelligence.selector import get_model_performance
+        import os as _os
+
+        success = ctx.status.value == "COMPLETED"
+        task_class = "general"
+
+        # Determine model credited
+        model_id = ""
+        if ctx.agents_selected:
+            model_id = ctx.agents_selected[0]
+        if not model_id:
+            model_id = (
+                _os.environ.get("ANTHROPIC_MODEL")
+                or _os.environ.get("OPENROUTER_MODEL")
+                or _os.environ.get("OPENAI_MODEL")
+                or "unknown"
+            )
+
+        # Estimate duration from context metadata if available
+        duration_ms: float = 0.0
+        if hasattr(ctx, "created_at") and ctx.created_at:
+            import time as _t
+            try:
+                duration_ms = (_t.time() - float(ctx.created_at)) * 1000
+            except Exception:
+                pass
+
+        # quality: 1.0 on success, 0.0 on failure — populates avg_quality for A/B detection
+        quality_score = 1.0 if success else 0.0
+
+        get_model_performance().record(
+            model_id=model_id,
+            task_class=task_class,
+            success=success,
+            duration_ms=duration_ms,
+            quality=quality_score,
+        )
+        log.info(
+            "bridge.perf_recorded",
+            mission_id=ctx.mission_id,
+            model_id=model_id,
+            success=success,
+            quality=quality_score,
+            duration_ms=int(duration_ms),
+        )
+
+        # ── A/B test auto-activation ──────────────────────────────────────────
+        # After each evidence record, check if any task classes have ≥3 samples
+        # per model with close quality scores → automatically start A/B tests.
+        try:
+            from core.model_intelligence.auto_update import get_model_auto_update
+            updater = get_model_auto_update()
+            candidates = updater.detect_ab_candidates()
+            for cand in candidates:
+                tc = cand["task_class"]
+                if not updater.get_active_test(tc):
+                    updater.start_ab_test(tc, cand["model_a"], cand["model_b"])
+                    log.info(
+                        "ab_test_auto_started",
+                        mission_id=ctx.mission_id,
+                        task_class=tc,
+                        model_a=cand["model_a"],
+                        model_b=cand["model_b"],
+                        quality_diff=cand.get("quality_diff"),
+                        samples_a=cand.get("samples_a"),
+                        samples_b=cand.get("samples_b"),
+                    )
+        except Exception as _ab_exc:
+            log.debug("ab_test_auto_skip", err=str(_ab_exc)[:80])
 
     # ── Mission Submission ────────────────────────────────────────────────────
 
@@ -110,7 +229,7 @@ class OrchestrationBridge:
 
             # Always create canonical view (even when bridge disabled)
             canonical = self._ms_result_to_canonical(result)
-            self._canonical_missions[canonical.mission_id] = canonical
+            self._update_cache(canonical)
 
             if _bridge_enabled():
                 log.info(
@@ -149,9 +268,33 @@ class OrchestrationBridge:
 
         Returns CanonicalMissionContext or None. Never raises.
         """
-        # 1. Check canonical cache
-        if mission_id in self._canonical_missions:
-            return self._canonical_missions[mission_id]
+        # Status ordering: READY is the initial bridge state — always check MetaOrchestrator
+        # for a live update so that execution state (RUNNING, DONE, FAILED) propagates back.
+        # NOTE: MetaOrchestrator "DONE" maps to CanonicalMissionStatus.COMPLETED (.value="COMPLETED")
+        # Include both "DONE" and "COMPLETED" to handle both legacy and canonical status strings.
+        _TERMINAL_STATUSES = {"DONE", "COMPLETED", "FAILED", "CANCELLED", "REJECTED"}
+        _LIVE_STATUSES = {"RUNNING", "REVIEW", "PLANNED", "DONE", "COMPLETED", "FAILED", "CANCELLED", "REJECTED"}
+
+        cached = self._canonical_missions.get(mission_id)
+
+        # Always try MetaOrchestrator first if the cached status is still early-stage
+        if cached is None or cached.status.value not in _TERMINAL_STATUSES:
+            try:
+                from core.meta_orchestrator import get_meta_orchestrator
+                mo = get_meta_orchestrator()
+                ctx = mo.get_mission(mission_id)
+                if ctx:
+                    mo_canonical = self._mo_context_to_canonical(ctx)
+                    # Promote cache if MetaOrchestrator has a more advanced status
+                    if mo_canonical.status.value in _LIVE_STATUSES:
+                        self._update_cache(mo_canonical)
+                        return mo_canonical
+            except Exception:
+                pass
+
+        # 1. Return cache if available
+        if cached is not None:
+            return cached
 
         # 2. Check MissionSystem
         try:
@@ -160,19 +303,7 @@ class OrchestrationBridge:
             result = ms.get_mission(mission_id)
             if result:
                 canonical = self._ms_result_to_canonical(result)
-                self._canonical_missions[mission_id] = canonical
-                return canonical
-        except Exception:
-            pass
-
-        # 3. Check MetaOrchestrator
-        try:
-            from core.meta_orchestrator import get_meta_orchestrator
-            mo = get_meta_orchestrator()
-            ctx = mo.get_mission(mission_id)
-            if ctx:
-                canonical = self._mo_context_to_canonical(ctx)
-                self._canonical_missions[mission_id] = canonical
+                self._update_cache(canonical)
                 return canonical
         except Exception:
             pass
@@ -183,21 +314,36 @@ class OrchestrationBridge:
         """
         Approve a mission through the bridge.
 
-        Updates both legacy system and canonical state.
-        Never raises.
+        Three-step sequence (all fail-open):
+        1. Legacy MissionSystem.approve()        — legacy status
+        2. MetaOrchestrator.resolve_approval()   — resumes real execution
+        3. Canonical status WAITING_APPROVAL → READY + persist to SQLite
         """
         try:
+            # 1. Legacy system
             from core.mission_system import get_mission_system
             ms = get_mission_system()
             result = ms.approve(mission_id, note=note)
 
+            # 2. MetaOrchestrator — resumes actual execution for missions in AWAITING_APPROVAL
+            try:
+                from core.meta_orchestrator import get_meta_orchestrator
+                _orch = get_meta_orchestrator()
+                _orch.resolve_approval(mission_id, granted=True, reason=note or "Approved via bridge")
+                log.info("bridge.approve_meta_resolved", mission_id=mission_id)
+            except Exception as _me:
+                log.debug("bridge.approve_meta_skip", err=str(_me)[:80])
+
+            # 3. Canonical state + persist
             canonical = self._canonical_missions.get(mission_id)
             if canonical and canonical.status == CanonicalMissionStatus.WAITING_APPROVAL:
                 try:
                     canonical.transition(CanonicalMissionStatus.READY)
+                    self._update_cache(canonical)
                 except TransitionError:
                     pass
 
+            log.info("bridge.approve_ok", mission_id=mission_id, note=note[:80])
             return {
                 "ok": True,
                 "mission_id": mission_id,
@@ -211,20 +357,38 @@ class OrchestrationBridge:
     def reject_mission(self, mission_id: str, note: str = "") -> dict:
         """
         Reject a mission through the bridge.
-        Never raises.
+
+        Three-step sequence (all fail-open):
+        1. Legacy MissionSystem.reject()
+        2. MetaOrchestrator.resolve_approval(granted=False)
+        3. Canonical status → CANCELLED + persist to SQLite
         """
         try:
+            # 1. Legacy system
             from core.mission_system import get_mission_system
             ms = get_mission_system()
             result = ms.reject(mission_id, note=note)
 
+            # 2. MetaOrchestrator — closes the approval gate
+            try:
+                from core.meta_orchestrator import get_meta_orchestrator
+                _orch = get_meta_orchestrator()
+                _orch.resolve_approval(mission_id, granted=False,
+                                       reason=note or "Rejected via bridge")
+                log.info("bridge.reject_meta_resolved", mission_id=mission_id)
+            except Exception as _me:
+                log.debug("bridge.reject_meta_skip", err=str(_me)[:80])
+
+            # 3. Canonical state + persist
             canonical = self._canonical_missions.get(mission_id)
             if canonical and not canonical.status.is_terminal:
                 try:
                     canonical.transition(CanonicalMissionStatus.CANCELLED)
+                    self._update_cache(canonical)
                 except TransitionError:
                     pass
 
+            log.info("bridge.reject_ok", mission_id=mission_id, note=note[:80])
             return {
                 "ok": True,
                 "mission_id": mission_id,
@@ -233,6 +397,13 @@ class OrchestrationBridge:
         except Exception as e:
             log.debug("bridge.reject_failed", err=str(e)[:100])
             return {"ok": False, "error": str(e)[:200]}
+
+    def list_missions(self, status_filter: str | None = None, limit: int = 20) -> list[dict]:
+        """Alias for list_missions_canonical — used by API routes."""
+        missions = self.list_missions_canonical(limit=limit)
+        if status_filter:
+            missions = [m for m in missions if m.get("status") == status_filter.upper()]
+        return missions
 
     def list_missions_canonical(self, limit: int = 20) -> list[dict]:
         """

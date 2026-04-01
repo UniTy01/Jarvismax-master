@@ -8,6 +8,9 @@ import os
 import sys
 import time
 import types
+import pytest
+pytestmark = pytest.mark.integration
+
 
 # Ensure structlog stub
 if 'structlog' not in sys.modules:

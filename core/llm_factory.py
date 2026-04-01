@@ -441,12 +441,44 @@ class LLMFactory:
         }
 
         model_id = model_map.get(role, _ORCH)
+
+        # ── ModelSelector: use evidence-driven model when catalog is populated ──
+        # Falls back to model_map if selector fails or has no catalog data.
+        _selector_model: str | None = None
+        _selector_reason: str = ""
+        _selector_is_fallback: bool = True
+        _selector_score: float = 0.0
+        try:
+            from core.model_intelligence.selector import get_model_selector
+            sel = get_model_selector()
+            result = sel.select_for_role(role, budget_mode="normal")
+            if result and result.model_id and not result.is_fallback:
+                _selector_model = result.model_id
+                _selector_reason = result.rationale or ""
+                _selector_is_fallback = False
+                _selector_score = round(result.final_score, 3)
+        except Exception:
+            pass  # Selector unavailable → use model_map default
+
+        if _selector_model and _selector_model != model_id:
+            log.info(
+                "model_selector_override",
+                role=role,
+                model_map_default=model_id,
+                selector_choice=_selector_model,
+                score=_selector_score,
+                rationale=_selector_reason[:120],
+            )
+            model_id = _selector_model
+
         # OPENROUTER_MODEL_SELECTED — canonical log event for routing decisions
         log.info(
             "OPENROUTER_MODEL_SELECTED",
             role=role,
             model=model_id,
             tier="FAST" if model_id == _FAST else "ORCHESTRATOR" if model_id == _ORCH else "SPECIAL",
+            selector_used=(not _selector_is_fallback),
+            selector_score=_selector_score,
         )
         model = model_id
         return ChatOpenAI(

@@ -46,7 +46,7 @@ class TestResult:
 
 
 @dataclass
-class TestSuiteResult:
+class AgentSuiteResult:
     """Result of running all tests for an agent."""
     agent_id: str
     template_name: str
@@ -264,11 +264,11 @@ def run_test_case(agent: GeneratedAgent, test: TestCase) -> TestResult:
                           error=str(e), duration_ms=duration)
 
 
-def run_test_suite(agent: GeneratedAgent) -> TestSuiteResult:
+def run_test_suite(agent: GeneratedAgent) -> AgentSuiteResult:
     """Run the full test battery for a generated agent."""
     template = get_template(agent.template_name)
     if not template:
-        return TestSuiteResult(agent_id=agent.id, template_name=agent.template_name)
+        return AgentSuiteResult(agent_id=agent.id, template_name=agent.template_name)
 
     tests = generate_test_battery(template)
     start = time.time()
@@ -286,7 +286,7 @@ def run_test_suite(agent: GeneratedAgent) -> TestSuiteResult:
     pass_rate = passed / len(results) if results else 0
     score = pass_rate * 0.8 + (1.0 if failed == 0 else 0) * 0.2
 
-    suite = TestSuiteResult(
+    suite = AgentSuiteResult(
         agent_id=agent.id,
         template_name=agent.template_name,
         total_tests=len(results),

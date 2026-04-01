@@ -98,7 +98,8 @@ from core.self_improvement.sandbox_executor import (
     SandboxExecutor, SandboxResult, _scrub_secrets, FailureCategory,
 )
 from core.self_improvement.test_runner import (
-    TestRunner, TestSuiteResult, ValidationReport, ExperimentReport,
+    PatchRunner as TestRunner, SuiteResult as TestSuiteResult,
+    ValidationReport, ExperimentReport,
 )
 from core.self_improvement.observability import (
     SIObservability, SIEvent, get_si_observability,
