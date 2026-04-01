@@ -140,13 +140,21 @@ class OrchestrationBridge:
         import os as _os
 
         success = ctx.status.value == "COMPLETED"
-        task_class = "general"
+        # Derive task_class from mission type or agent composition when available
+        task_class = getattr(ctx, "mission_type", None) or "general"
+        if task_class not in ("coding_task", "research_task", "planning_task",
+                              "evaluation_task", "general"):
+            task_class = "general"
 
-        # Determine model credited
-        model_id = ""
-        if ctx.agents_selected:
-            model_id = ctx.agents_selected[0]
-        if not model_id:
+        # Determine model credited.
+        # NOTE: ctx.agents_selected stores AGENT names ("scout-research"), not LLM model IDs.
+        # We derive model_id from the active LLM env vars instead, which is the correct entity.
+        strategy = _os.environ.get("MODEL_STRATEGY", "anthropic")
+        if strategy == "anthropic":
+            model_id = _os.environ.get("ANTHROPIC_MODEL", "unknown")
+        elif strategy == "openrouter":
+            model_id = _os.environ.get("OPENROUTER_MODEL", "unknown")
+        else:
             model_id = (
                 _os.environ.get("ANTHROPIC_MODEL")
                 or _os.environ.get("OPENROUTER_MODEL")

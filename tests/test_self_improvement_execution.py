@@ -366,7 +366,7 @@ class TestGitAgent:
 
         result = agent._diff_tempcopy(snap, PatchResult())
         assert result.applied
-        assert "core/tool_runner.py" in result.changed_files
+        assert "core/tool_runner.py" in [p.replace("\\", "/") for p in result.changed_files]
         shutil.rmtree(snap.sandbox_path, ignore_errors=True)
 
     def test_cleanup(self, tmp_repo):
@@ -682,7 +682,7 @@ class TestIntegration:
         # Diff
         diff = agent._diff_tempcopy(snap, PatchResult())
         assert diff.applied
-        assert "core/tool_runner.py" in diff.changed_files
+        assert "core/tool_runner.py" in [p.replace("\\", "/") for p in diff.changed_files]
 
         # Cleanup
         agent.cleanup_sandbox(snap)

@@ -2,7 +2,7 @@
 # JARVIS MAX — Main CI Pipeline
 #
 # Two jobs:
-#   1. unit-tests : 37 focused regression tests — no external services
+#   1. unit-tests : 95 focused regression tests — no external services
 #                   required. Runs on every push/PR. Must stay green.
 #   2. integration-tests : full stack + LLM — runs only when secrets
 #                   are present (scheduled or manual trigger).
@@ -41,7 +41,7 @@ concurrency:
 # ── Job 1: Unit tests (no external services) ─────────────────────────────────
 jobs:
   unit-tests:
-    name: Unit Tests (37 regression tests)
+    name: Unit Tests (95 regression tests)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -68,11 +68,21 @@ jobs:
         run: |
           python -m pytest tests/test_canonical_mission_persistence.py -v --tb=short
 
-      - name: Confirm 37 total pass, 0 skipped
+      - name: Run hierarchical planner regression tests (21 tests)
+        run: |
+          python -m pytest tests/test_hierarchical_planner.py -v --tb=short
+
+      - name: Run production hardening tests (37 tests)
+        run: |
+          python -m pytest tests/test_production_hardening_p34.py -v --tb=short
+
+      - name: Confirm 95 total pass, 0 skipped
         run: |
           python -m pytest \
             tests/test_terminal_state_truth.py \
             tests/test_canonical_mission_persistence.py \
+            tests/test_hierarchical_planner.py \
+            tests/test_production_hardening_p34.py \
             --tb=short -q
 
   # ── Job 2: Integration tests (requires live stack + secrets) ─────────────────

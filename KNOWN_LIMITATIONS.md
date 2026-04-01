@@ -1,5 +1,5 @@
 # KNOWN_LIMITATIONS.md — Jarvis Max
-_Last updated: 2026-04-01 — Cycle 8: KL-001 RESOLVED ✅_
+_Last updated: 2026-04-01 — Cycle 15 hardening wave complete_
 
 This document lists known limitations, unresolved bugs, and deliberate trade-offs in the current codebase.
 Each entry includes: symptom, root cause, workaround, and fix complexity.
@@ -121,22 +121,61 @@ Replan logic preserved per-wave (only for waves with priority ≤ 2).
 
 ---
 
-## KL-006 — No integration tests pass without external services
+## KL-006 — Integration tests require live external services
 
 **Severity:** Informational (expected behavior, not a bug)
 
 **Symptom:**
-All tests marked `@pytest.mark.integration` require live external services
-(Postgres, Redis, Qdrant, LLM API). Running `pytest -m integration` without these
-services produces failures.
+All tests marked `@pytest.mark.integration` or `@pytest.mark.infra` require live
+external services (Postgres, Redis, Qdrant, LLM API key). Running
+`pytest -m integration` without these services produces failures.
 
-**Current status:**
-~142 unit tests pass in isolation. Integration test classification not yet complete
-(Phase 4 of hardening plan is pending).
+**Current status (Cycle 15):**
+- **95 unit tests** pass in isolation (no external services required):
+  `test_terminal_state_truth.py` (20) + `test_canonical_mission_persistence.py` (17)
+  + `test_hierarchical_planner.py` (21) + `test_production_hardening_p34.py` (37)
+- Integration tests: skip correctly via `--run-infra-tests` gate in `conftest.py`
+- pgvector hybrid memory path: structurally correct, E2E proof needs live Postgres
 
 **Fix required:**
-Phase 4: run `pytest -m integration`, classify each failure, fix real product bugs,
-relabel infra-dependency tests as `@pytest.mark.requires_docker`.
+Run `pytest --run-infra-tests -m integration` against live Docker stack after KL-003
+(Docker live boot) is verified. Classify failures, fix real bugs, update this entry.
+
+---
+
+---
+
+## KL-008 — WAITING_APPROVAL missions cannot auto-resume after server restart
+
+**Severity:** Low (affects a narrow edge case; workaround exists)
+
+**Symptom:**
+A mission that reached `WAITING_APPROVAL` state and was persisted to SQLite cannot
+automatically continue execution after a server restart. The `MetaOrchestrator`
+execution coroutine is lost when the process exits. On restart, the canonical store
+correctly reloads the `WAITING_APPROVAL` status, but there is no mechanism to
+re-attach an execution coroutine to the resumed mission. The mission is stuck in
+`WAITING_APPROVAL` indefinitely.
+
+**Root cause:**
+`MetaOrchestrator.run_mission()` is a long-running async coroutine stored only in
+memory (as an `asyncio.Task`). It is not serialized to the database. When the
+process exits, the task is lost. On restart, `OrchestrationBridge.load_all()`
+restores the persisted state, but no new task is spawned for the waiting mission.
+
+**Workaround:**
+The human operator (or mobile client) can re-submit the goal. The new mission will
+start fresh from `CREATED`. The stale `WAITING_APPROVAL` mission in the database
+will eventually be superseded and can be ignored.
+
+**Fix complexity:** Medium (2–3 days).
+Option A: On startup, `OrchestrationBridge` detects missions in `WAITING_APPROVAL`
+and spawns a minimal re-entry coroutine that immediately awaits the approval queue.
+Option B: On restart, transition stale `WAITING_APPROVAL` missions to `FAILED`
+with `failure_reason = "server_restart_during_approval"` to surface the issue
+cleanly rather than leaving orphaned state.
+
+**Resolution:** Track in productization backlog (Track 3 growth features).
 
 ---
 

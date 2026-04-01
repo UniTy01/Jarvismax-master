@@ -21,3 +21,7 @@ logs/
 data/model_performance.json
 *.sqlite
 *.db
+storage/
+.qdrant-initialized
+RELEASE_JUDGMENT_PHASE2.md
+ENGINEERING_REPORT.md

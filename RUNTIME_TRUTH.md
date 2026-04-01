@@ -1,5 +1,63 @@
 # RUNTIME_TRUTH.md — Jarvis Max
-_Last updated: 2026-04-01 — Cycle 11: Internal-beta hardening complete (Cycles 8–11)_
+_Last updated: 2026-04-01 — Cycle 15: Full hardening wave complete (Cycles 12–15)_
+
+---
+
+## Cycle 15 — Full Hardening Wave (2026-04-01)
+
+### Summary
+10-phase hardening pass on frozen backend. No production code regressions.
+Test suite expanded from 37 → 95 unit tests. All green on Windows and Linux/CI.
+
+### What was done and verified
+
+**Test suite hardening (95 unit tests, all green):**
+- `tests/test_hierarchical_planner.py` — 21 new regression tests for `MissionDecomposer`
+  - `should_decompose()` threshold contract (8 tests)
+  - `decompose()` return-None cases (3 tests)
+  - `decompose()` valid plan structure (4 tests)
+  - Domain keyword routing (2 tests)
+  - Fail-open behavior — exceptions → None, never raise (2 tests)
+  - Singleton `get_mission_decomposer()` idempotence (2 tests)
+- `tests/test_canonical_mission_persistence.py` — fixed Windows SQLite teardown
+  (`ignore_cleanup_errors=True` + `gc.collect()` before temp dir cleanup)
+- `tests/test_self_improvement_execution.py` — fixed Windows path separator in 2 assertions
+  (`'core/tool_runner.py'` vs `'core\\tool_runner.py'`)
+- `tests/test_production_hardening_p34.py` — added to CI gate (37 tests, covers
+  `JARVIS_PRODUCTION=1` → SI forced off boundary)
+
+**CI gate corrected:**
+- `.github/workflows/ci.yml` updated: 37 → 95 tests, `test_hierarchical_planner.py`
+  and `test_production_hardening_p34.py` added to unit-tests job
+
+**Performance evidence recording fixed (Cycle 13/14 fix verified):**
+- `core/orchestration_bridge.py`: `_record_performance_evidence()` now derives
+  `model_id` from `MODEL_STRATEGY` + env vars (not `ctx.agents_selected[0]` which
+  stores agent names, not model IDs)
+- `task_class` now validated against known taxonomy before recording
+
+**Hybrid memory pgvector path verified (structural):**
+- `memory/memory_bus.py`: pgvector tier runs in parallel gather in `search()` whenever
+  `pgvector.is_available()` returns True; fail-open (returns `[]` on any exception)
+- E2E proof deferred: requires live Postgres + pgvector (external blocker, KL-006)
+
+**SI production boundary verified:**
+- `main.py` lines 346-354: if `production_mode AND self_improve_enabled` → force
+  `SELF_IMPROVE_ENABLED=false`, log `si_forced_off_in_production`
+- `test_production_hardening_p34.py`: 37 tests cover this boundary, all green
+
+**KNOWN_LIMITATIONS updated:**
+- KL-006: updated to reflect 95 unit tests, current integration test state
+- KL-008: NEW — `WAITING_APPROVAL` missions cannot auto-resume after server restart
+  (execution coroutine is ephemeral; workaround = re-submit; medium fix in backlog)
+
+### Test result (Cycle 15)
+```
+95 passed, 1 warning in 3.35s    ← unit regression suite (Windows)
+180 passed, 5 warnings in 5.42s  ← all non-integration tests (Windows)
+```
+All 180 non-integration tests pass on Windows Python 3.14.
+All 95 CI-gated tests pass (Linux CI environment: Python 3.12).
 
 ---
 

@@ -11,6 +11,7 @@ These are unit tests — no server or external dependencies required.
 """
 from __future__ import annotations
 
+import gc
 import tempfile
 import time
 import unittest
@@ -50,11 +51,15 @@ class TestCanonicalMissionStore(unittest.TestCase):
     """Unit tests for CanonicalMissionStore."""
 
     def setUp(self):
-        self._tmpdir = tempfile.TemporaryDirectory()
+        self._tmpdir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.db_path = Path(self._tmpdir.name) / "test.db"
         self.store = CanonicalMissionStore(db_path=self.db_path)
 
     def tearDown(self):
+        # Release store (closes SQLite connections) before temp-dir cleanup.
+        # Required on Windows where open file handles block directory deletion.
+        self.store = None
+        gc.collect()
         self._tmpdir.cleanup()
 
     def test_store_initializes_ok(self):
@@ -147,10 +152,14 @@ class TestBridgePersistenceRestart(unittest.TestCase):
     """
 
     def setUp(self):
-        self._tmpdir = tempfile.TemporaryDirectory()
+        self._tmpdir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.db_path = Path(self._tmpdir.name) / "canonical.db"
+        self._bridges: list = []  # track bridges so we can release them before cleanup
 
     def tearDown(self):
+        # Release all bridge+store refs before temp-dir cleanup (Windows WAL lock).
+        self._bridges.clear()
+        gc.collect()
         self._tmpdir.cleanup()
 
     def _make_bridge(self):
@@ -161,6 +170,7 @@ class TestBridgePersistenceRestart(unittest.TestCase):
         b._store = CanonicalMissionStore(db_path=self.db_path)
         for ctx in b._store.load_all():
             b._canonical_missions[ctx.mission_id] = ctx
+        self._bridges.append(b)  # register so tearDown can release before cleanup
         return b
 
     def test_mission_survives_restart(self):
