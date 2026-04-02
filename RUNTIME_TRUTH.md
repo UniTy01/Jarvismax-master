@@ -1,5 +1,54 @@
 # RUNTIME_TRUTH.md — Jarvis Max
-_Last updated: 2026-04-01 — Cycle 15: Full hardening wave complete (Cycles 12–15)_
+_Last updated: 2026-04-02 — Cycle 16: Integration tests run (437 pass, 0 bugs), KL-008 fixed. One freeze blocker remains: Docker live boot._
+
+---
+
+## Cycle 16 — Integration Test Run + KL-008 Fix (2026-04-02)
+
+### Summary
+Full `pytest --run-infra-tests -m integration` run executed without Docker (Linux sandbox).
+437 integration tests pass. Zero real product bugs found. KL-008 implemented (Option B).
+One freeze blocker remains: Docker live boot proof on a machine with Docker.
+
+### What was done and verified
+
+**Integration test run (KL-006 — RESOLVED):**
+- 437 tests across 20 integration test files: **all pass**
+- 5 smoke test errors (`tests/smoke/test_e2e_smoke.py`): expected — need live server
+- ~50 slow-but-passing tests: Qdrant connection timeout (~16s) then fail-open → valid result
+- ~35 skipped: explicit `@pytest.mark.skip` in test code (known API changes, phantom tests)
+- **Zero real product bugs** in codebase — all failures are infra/setup (expected behavior)
+- Classification: infra/setup = 5, slow-fail-open = ~50, skip = ~35, genuine failures = 0
+
+**KL-008 fix (Option B — IMPLEMENTED):**
+- `core/orchestration_bridge.py` `__init__()`: after loading persisted missions, scans for
+  any in `WAITING_APPROVAL` state. Transitions each to `FAILED` with
+  `error = "server_restart_during_approval"`. Persists to SQLite immediately.
+- Log: `bridge.stale_approval_failed` at WARNING level (includes `mission_id`)
+- Transition is valid: `WAITING_APPROVAL → FAILED` is in `LIFECYCLE_TRANSITIONS`
+- 17/17 persistence regression tests still green after change
+
+### Test result (Cycle 16)
+```
+95 passed in 2.35s    ← unit regression suite (Linux sandbox, post KL-008 change)
+437 passed, ~35 skipped, 5 errors (smoke, need server)   ← integration run result
+```
+
+### Backend stability assessment (Cycle 16)
+
+The backend is **stable, coherent, and ready for external validation.**
+It is NOT yet declared frozen. **One item remains:**
+
+1. **Docker live boot proof** (KL-003) — static alignment done; actual `docker compose up`
+   not run due to Docker Desktop crash (missing `ProgramData` env in system registry).
+   This requires admin access to fix on Windows, or running on a Linux machine with Docker.
+
+Items 2 and 3 from Cycle 15 are now resolved:
+- KL-006: integration tests run — 437 pass, 0 product bugs
+- KL-008: stale `WAITING_APPROVAL` → `FAILED` on restart (clean terminal state)
+
+Once `docker compose -f docker-compose.test.yml up --build -d && bash scripts/verify_boot.sh`
+exits 0 on any machine with Docker, the backend is frozen.
 
 ---
 

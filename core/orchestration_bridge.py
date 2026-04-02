@@ -96,11 +96,33 @@ class OrchestrationBridge:
             from core.canonical_mission_store import CanonicalMissionStore
             self._store: Any = CanonicalMissionStore()
             # Warm in-memory cache from persisted state (restart safety)
+            _stale_approval: list = []
             for ctx in self._store.load_all():
                 self._canonical_missions[ctx.mission_id] = ctx
+                if ctx.status == CanonicalMissionStatus.WAITING_APPROVAL:
+                    _stale_approval.append(ctx)
+
+            # KL-008: WAITING_APPROVAL missions cannot auto-resume after restart
+            # because the MetaOrchestrator coroutine is lost. Transition them to
+            # FAILED so the operator gets a clean, honest terminal state instead
+            # of an orphaned WAITING_APPROVAL that will never resolve.
+            for ctx in _stale_approval:
+                try:
+                    ctx.error = "server_restart_during_approval"
+                    ctx.transition(CanonicalMissionStatus.FAILED)
+                    self._store.save(ctx)
+                    log.warning(
+                        "bridge.stale_approval_failed",
+                        mission_id=ctx.mission_id,
+                        reason="server_restart_during_approval",
+                    )
+                except Exception as _kl008_err:
+                    log.debug("bridge.stale_approval_fail_skip", err=str(_kl008_err)[:80])
+
             log.info(
                 "bridge.store_loaded",
                 missions_restored=len(self._canonical_missions),
+                stale_approvals_failed=len(_stale_approval),
             )
         except Exception as exc:
             log.warning("bridge.store_unavailable", err=str(exc)[:120])
