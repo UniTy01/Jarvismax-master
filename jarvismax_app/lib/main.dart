@@ -8,7 +8,6 @@ import 'services/api_service.dart';
 import 'services/uncensored_notifier.dart';
 import 'services/websocket_service.dart';
 import 'theme/design_system.dart';
-import 'theme/app_theme_v2.dart';
 import 'screens/home_screen.dart';
 import 'screens/mission_screen.dart';
 import 'screens/approvals_screen.dart';
@@ -262,25 +261,3 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
   }
 }
 
-// V2 theme reference
-final _v2Theme = AppThemeV2.theme;
-
-/// Auth gate — wraps the app and shows LoginScreen until authenticated.
-class _AuthGate extends StatefulWidget {
-  final Widget child;
-  const _AuthGate({required this.child});
-  @override
-  State<_AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<_AuthGate> {
-  bool _authenticated = false;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_authenticated) {
-      return LoginScreen(onLogin: () => setState(() => _authenticated = true));
-    }
-    return widget.child;
-  }
-}
