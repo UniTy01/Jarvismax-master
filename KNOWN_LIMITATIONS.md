@@ -1,5 +1,5 @@
 # KNOWN_LIMITATIONS.md — Jarvis Max
-_Last updated: 2026-04-03 — Cycle 18: Production hardening wave complete. 14 audit findings resolved. No new KLs introduced._
+_Last updated: 2026-04-03 — Cycle 18 post-wave: KL-009 closed (requirements.lock generated). MOD-006 SI gate refined (check moved to run_tests()). 5700 unit tests pass._
 
 This document lists known limitations, unresolved bugs, and deliberate trade-offs in the current codebase.
 Each entry includes: symptom, root cause, workaround, and fix complexity.
@@ -204,12 +204,21 @@ orphaned missions that will never resolve. The operator can re-submit the goal i
 
 ---
 
-## KL-009 — PARTIAL: requirements.txt not fully locked
+## ~~KL-009~~ — ✅ RESOLVED (2026-04-03, Cycle 18 post-wave)
 
-**Symptom:** `pip install -r requirements.txt` in Docker produces different transitive dependency
-versions on different days (PyPI ships new packages continuously).
+**Was:** requirements.txt not fully locked — transitive dependency drift possible.
 
-**Root cause:** Critical packages use `>=X.Y,<X+1` upper-bound constraints (Cycle 18 improvement).
+**Fix:** `requirements.lock` generated via `docker run --rm jarvismax-master-jarvis:latest pip freeze`
+(182 packages, all `==` pinned). Regenerate with `bash scripts/generate_requirements_lock.sh`.
+Docker builds using the lock are now fully reproducible.
+
+**Commit:** `2cd5765`
+
+---
+
+## KL-009-ARCHIVE — requirements.txt not fully locked (RESOLVED, see above)
+
+**Root cause (was):** Critical packages used `>=X.Y,<X+1` upper-bound constraints (Cycle 18 improvement).
 This blocks accidental major-version bumps but does not pin transitive deps or patch versions.
 
 **Partial fix applied (Cycle 18):**

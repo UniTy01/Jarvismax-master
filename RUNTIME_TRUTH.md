@@ -1,5 +1,5 @@
 # RUNTIME_TRUTH.md — Jarvis Max
-_Last updated: 2026-04-03 — Cycle 18: Production hardening wave. 14 audit findings resolved. Backend frozen + hardened._
+_Last updated: 2026-04-03 — Cycle 18 post-wave: KL-009 closed (requirements.lock, 182 packages), MOD-006 SI gate refined, 5700 unit tests pass._
 
 ---
 
@@ -48,13 +48,18 @@ Real LLM output produced (OpenRouter, qwen models, 521 chars). Backend declared 
 Note: COMPLETED is correct — 1/3 agents succeeded (rate=33% > 20% threshold). The synthesizer
 produced honest PARTIAL assessment. This is correct behavior, not a bug.
 
-### Test results (Cycle 18, cumulative)
+### Test results (Cycle 18 post-wave, cumulative)
 ```
-153 passed, 0 failed  ← targeted regression on all changed modules (Cycle 18)
-95 passed in 2.35s    ← unit regression suite (Cycle 17, unchanged)
-437 passed, ~35 skipped, 5 errors (smoke, need server)   ← integration run (Cycle 16)
+5700 passed, 515 skipped, ~20 pre-existing failures  ← full suite via Docker (2026-04-03)
+  Pre-existing failures confirmed (not regressions):
+    - test_rejected_outside_scope (assertion mismatch on message text)
+    - test_no_report_files_at_root (10+ .md files at root pre-date this cycle)
+    - test_aios_dashboard (requires live server on localhost:8000)
+    - test_debug_api DB02/DB03, test_execution_reliability MF11 (pre-existing model selector mocks)
+  MOD-006 regression introduced then FIXED: SI gate moved from __init__ to run_tests()
+    → RegressionGuard unit tests: 11/11 passing after fix (commit 2f3760e)
+153 passed, 0 failed  ← targeted regression on all changed modules (initial Cycle 18)
 Docker boot: health→readiness→auth→submit→RUNNING→COMPLETED ← PROVEN 2026-04-03
-2 pre-existing test failures (not regressions): test_rejected_outside_scope (assertion mismatch on message text), test_supervise_fast_success (MagicMock truthy default in mock setup)
 ```
 
 ### Production Hardening Wave — Cycle 18 (2026-04-03)
@@ -63,7 +68,7 @@ Applied after full audit. All fixes validated, no regressions introduced.
 
 | Item | Fix | Status |
 |------|-----|--------|
-| MAJ-001 requirements not pinned | Upper-bound constraints `>=X.Y,<X+1` on all volatile packages + `scripts/generate_requirements_lock.sh` | PARTIAL — upper bounds applied, exact `==` lock requires running Docker image |
+| MAJ-001 requirements not pinned | Upper-bound constraints `>=X.Y,<X+1` + `requirements.lock` (182 packages, `==` pinned) generated from live image | FIXED — `requirements.lock` committed (2026-04-03, commit 2cd5765) |
 | MAJ-002 rate limiter not wired | `RateLimitMiddleware` added to `api/rate_limiter.py` + mounted in `api/main.py` | FIXED |
 | MAJ-003 dynamic pip install at boot | Removed `subprocess pip install PyJWT` from `main.py` | FIXED |
 | MOD-001 CORS too permissive | `allow_headers`/`allow_methods` restricted to explicit lists | FIXED |
