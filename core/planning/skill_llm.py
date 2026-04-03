@@ -507,23 +507,21 @@ def invoke_skill_llm(
         }
 
     try:
-        # Run async invocation from sync context
+        # Run async invocation from sync context.
+        # get_running_loop() raises RuntimeError when no loop is active (Python 3.10+).
+        # get_event_loop() is deprecated in Python 3.10+ and removed from threads in 3.12.
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # Already in async context — create a new thread
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    future = pool.submit(
-                        asyncio.run,
-                        _invoke_async(prompt_context, output_schema, skill_id, budget_mode)
-                    )
-                    result = future.result(timeout=_TIMEOUT_SECONDS + 10)
-            else:
-                result = loop.run_until_complete(
+            asyncio.get_running_loop()
+            # Already inside an event loop — delegate to a fresh thread to avoid nesting
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(
+                    asyncio.run,
                     _invoke_async(prompt_context, output_schema, skill_id, budget_mode)
                 )
+                result = future.result(timeout=_TIMEOUT_SECONDS + 10)
         except RuntimeError:
+            # No running loop — asyncio.run() creates and manages one
             result = asyncio.run(
                 _invoke_async(prompt_context, output_schema, skill_id, budget_mode)
             )

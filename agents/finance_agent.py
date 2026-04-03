@@ -88,7 +88,7 @@ class FinanceAgent:
     Finance agent with approval gates.
     
     Usage:
-        agent = FinanceAgent(stripe=StripeTool(api_key="sk_test_..."))
+        agent = FinanceAgent(stripe=StripeTool(api_key=os.environ.get("STRIPE_API_KEY", "")))
         result = agent.create_product("My SaaS", "AI tool")
         # Auto-executes (safe action)
         

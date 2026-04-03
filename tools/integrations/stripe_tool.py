@@ -75,7 +75,7 @@ class StripeTool:
     Stripe API wrapper with vault integration.
     
     Usage:
-        tool = StripeTool(api_key="sk_test_...")  # or from vault
+        tool = StripeTool(api_key=os.environ.get("STRIPE_API_KEY", ""))  # or from vault
         resp = tool.create_product("My SaaS", "AI-powered tool")
     """
 
