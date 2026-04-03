@@ -95,6 +95,11 @@ services:
       JARVIS_ROOT:          /app
     volumes:
       - jarvis_workspace_data:/app/workspace   # persists canonical_missions.db, jarvismax.db
+    extra_hosts:
+      # api.openrouter.ai has no DNS A record in some resolvers — pin to Cloudflare IPs
+      # that serve openrouter.ai (verified: curl --resolve returns HTTP 200)
+      - "api.openrouter.ai:104.18.3.115"
+      - "api.openrouter.ai:104.18.2.115"
     ports:
       - "8000:8000"
     networks: [jarvis_test_net]

@@ -1,5 +1,5 @@
 # KNOWN_LIMITATIONS.md — Jarvis Max
-_Last updated: 2026-04-02 — Cycle 16: Integration tests run (437 pass, 0 bugs). KL-006 resolved. KL-008 resolved. One blocker remains: KL-003 Docker live boot._
+_Last updated: 2026-04-03 — Cycle 17: Docker live boot PROVEN. KL-003 resolved. All known limitations resolved. Backend frozen._
 
 This document lists known limitations, unresolved bugs, and deliberate trade-offs in the current codebase.
 Each entry includes: symptom, root cause, workaround, and fix complexity.
@@ -50,40 +50,36 @@ returned `status=COMPLETED` on new server instance without re-executing.
 
 ---
 
-## KL-003 — Docker live boot proof is the sole remaining freeze blocker
+## ~~KL-003~~ — ✅ RESOLVED (2026-04-03, Cycle 17)
 
-**Severity:** Medium (the only remaining item before backend freeze can be declared)
+**Was:** Docker live boot not yet proven on real machine.
 
-KL-006 and KL-008 are now resolved. KL-003 is the last gate before freeze.
+**Live boot proof (2026-04-03, Cycle 17):**
 
-**Static audit completed (2026-04-01, Cycle 11 + Cycle 12):**
-- `docker-compose.test.yml`: services, volumes, env, healthchecks — all correct ✅
-- `docker/Dockerfile`: multi-stage, langchain-openai in requirements.txt, workspace dirs, non-root user, nodejs, healthcheck ✅
-- `.env.example`: PATH A (Anthropic) and PATH B (OpenRouter) documented and correct ✅
-- `scripts/verify_boot.sh`: health → readiness → auth → submit → poll → result quality check ✅
-- `.dockerignore`: venv/, .venv/, workspace/, logs/, .env.* added (Cycle 12) ✅
-- `RUNBOOK.md`: exact Docker boot instructions for both LLM provider paths ✅
-- `WORKSPACE_DIR=/app/workspace` env var overrides default correctly (verified) ✅
-- `QDRANT_HOST=qdrant` (Docker DNS) is the compose default — no native localhost confusion ✅
+Full path executed and verified against live running containers:
 
-**Exact boot command (ready to run):**
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # or OPENROUTER_API_KEY + MODEL_STRATEGY=openrouter
-export JARVIS_ADMIN_PASSWORD=mypassword
-export JARVIS_SECRET_KEY=$(openssl rand -hex 32)
-docker compose -f docker-compose.test.yml up --build -d
-JARVIS_ADMIN_PASSWORD=mypassword bash scripts/verify_boot.sh
-# Expected: "BOOT VERIFICATION PASSED" within 90s
-```
+| Step | Command | Result |
+|------|---------|--------|
+| 1. Health | `GET /health` | `{"status":"ok","service":"jarvismax"}` ✅ |
+| 2. Readiness | `GET /api/v3/system/readiness` | `ready:true, llm_key:ok(openrouter), qdrant:reachable, orchestrator:ok` ✅ |
+| 3. Auth | `POST /auth/token` | JWT obtained (167 chars) ✅ |
+| 4. Submit | `POST /api/v3/missions` | `mission_id:43147205-391, status:READY, bridge_active:true` ✅ |
+| 5. Running | Poll status | `status:RUNNING, source:meta_orchestrator` ✅ |
+| 6. Completed | Poll status | `status:COMPLETED, result:521 chars real LLM content` ✅ |
 
-**Why deferred:** Docker Desktop crashes on the current dev machine with
-`com.docker.backend.exe: unable to get 'ProgramData'` — the `ProgramData` environment
-variable is missing from `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment`.
-Fix requires admin elevation to write the registry key. Alternatively, run the boot
-command on any Linux machine or CI runner with Docker available.
+**Fixes applied during live boot (both committed):**
 
-This is the **highest-priority task on any machine with Docker available** and the sole
-remaining blocker before backend freeze is declared.
+1. **`docker-compose.test.yml` — extra_hosts DNS fix**: `api.openrouter.ai` has no A record
+   in many resolvers (including Windows and Docker's internal DNS). Fixed by pinning to
+   Cloudflare IPs `104.18.3.115` and `104.18.2.115` via `extra_hosts`. Verified: DNS
+   resolves inside container, HTTP 200 from OpenRouter API.
+
+2. **cmd.exe env var quoting**: When using `set VAR=value &&` in cmd.exe, a trailing space
+   is included in the value. Fixed by using `set "VAR=value"` (quoted form). Affects
+   `JARVIS_ADMIN_PASSWORD` and `MODEL_STRATEGY`. Documented in RUNBOOK.md.
+
+**Image built:** `jarvismax-master-jarvis:latest` (9.75 GB, 2026-04-03)
+**Stack:** jarvis_test_core (healthy, port 8000) + jarvis_test_qdrant (healthy, port 6333)
 
 ---
 

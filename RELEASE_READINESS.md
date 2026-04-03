@@ -1,5 +1,5 @@
 # RELEASE_READINESS.md — Jarvis Max
-_Last updated: 2026-04-02 — Integration tests run: 437 pass, 0 product bugs. KL-008 fixed. One freeze blocker remains: Docker live boot proof (KL-003)._
+_Last updated: 2026-04-03 — Cycle 17: Docker live boot PROVEN (mission 43147205-391 → COMPLETED, 521 chars real LLM output). All freeze blockers resolved. **BACKEND FROZEN.**_
 
 This document answers the question: **"What is actually working, what is partial, and what is not ready?"**
 It is updated after every cycle. Maturity inflation is forbidden.
@@ -46,6 +46,7 @@ python main.py
 | Performance evidence: model_id from MODEL_STRATEGY env (not agent names) | Fixed Cycle 15 |
 | Integration test run: 437 tests pass across 20 files, 0 product bugs found | Proven Cycle 16 |
 | KL-008 fixed: stale WAITING_APPROVAL → FAILED on restart (Option B) | Fixed Cycle 16 |
+| **Docker live boot PROVEN**: health→readiness→auth→submit→RUNNING→COMPLETED (521 chars) | **Proven Cycle 17** |
 
 ---
 
@@ -108,9 +109,11 @@ The cyber layer (`api/routes/security_audit.py`, `vault.py`, `core/cyber/`) incl
 - **Honest label:** "Internal platform security + limited agentic web access" — not a SOC platform, not offensive/defensive cyber capability. The security governance (rules, audit, approval gates) is the real implemented capability.
 
 ### Docker live boot
-- Static alignment complete (docker-compose.test.yml, Dockerfile, .env.example, verify_boot.sh)
-- **Actual Docker boot-to-COMPLETED not yet run** (KL-003 — Docker not available in dev environment)
-- Command ready: `docker compose -f docker-compose.test.yml up --build && bash scripts/verify_boot.sh`
+- ✅ **PROVEN (Cycle 17, 2026-04-03)** — full path executed on real Docker instance
+- Image: `jarvismax-master-jarvis:latest` 9.75 GB built clean from source
+- Stack: jarvis_test_core (healthy) + jarvis_test_qdrant (healthy)
+- Mission `43147205-391`: COMPLETED with 521 chars of real LLM output
+- Two env fixes applied: `extra_hosts` for api.openrouter.ai DNS, cmd.exe quoting for env vars
 
 ### CI/CD
 - ✅ `.github/workflows/ci.yml` updated (Cycle 15): `unit-tests` job now **95 tests** (every push, no secrets) + `integration-tests` job (Qdrant container, secrets-gated, schedule/manual)
@@ -167,29 +170,34 @@ This is the product the backend is built for. Everything else is upside.
 
 ---
 
-## Backend Freeze Status (2026-04-02)
+## ✅ Backend Freeze Status (2026-04-03, Cycle 17)
 
-The backend is **stable, coherent, and ready for external validation.**
-It is NOT yet declared frozen. **One item remains** before freeze can be declared:
+**THE BACKEND IS FROZEN.**
 
-| # | Item | Current state | Risk if deferred |
-|---|------|--------------|-----------------|
-| 1 | **Docker live boot proof** (KL-003) | Static alignment complete; actual container boot not run — Docker unavailable in dev environment | Medium — Dockerfile bugs could exist that static analysis missed |
+All three freeze blockers are resolved with real evidence:
 
-**Items 2 and 3 are now resolved:**
-- KL-006 RESOLVED: Integration tests run (437 pass, 0 product bugs, 5 smoke test errors as expected)
-- KL-008 RESOLVED: Stale `WAITING_APPROVAL` missions now transition to `FAILED` on restart
+| # | Item | Status | Evidence |
+|---|------|--------|---------|
+| 1 | **Docker live boot proof** (KL-003) | ✅ RESOLVED | Mission COMPLETED, 521 chars, Cycle 17 |
+| 2 | **Integration test run** (KL-006) | ✅ RESOLVED | 437 pass, 0 product bugs, Cycle 16 |
+| 3 | **WAITING_APPROVAL post-restart** (KL-008) | ✅ RESOLVED | Option B: → FAILED on restart, Cycle 16 |
 
-**Freeze decision:** Once `docker compose -f docker-compose.test.yml up --build && bash scripts/verify_boot.sh` exits 0 on a machine with Docker, the backend is declared frozen.
+The backend is **stable, coherent, and frozen for external validation.**
+
+The freeze declaration is evidence-based:
+- Docker image builds clean (9.75 GB, from source)
+- Full boot path health→readiness→auth→submit→RUNNING→COMPLETED proven live
+- 437 integration tests pass with 0 product bugs
+- 95 regression tests green
+- All known limitations resolved
 
 ---
 
 ## Deployment Checklist (for production)
 
-**Freeze pre-requisites (one remaining):**
-- [ ] **KL-003**: Run `docker compose -f docker-compose.test.yml up --build -d && JARVIS_ADMIN_PASSWORD=... bash scripts/verify_boot.sh` on a machine with Docker — confirm exit 0
+**All freeze pre-requisites resolved:**
 
-**Resolved (already done):**
+**Resolved (all done):**
 - [x] KL-001 resolved: invalid key → FAILED (not ghost-DONE) ✅
 - [x] KL-002 resolved: canonical missions persist across restart ✅
 - [x] KL-004 resolved: SI test infrastructure (PatchRunner rename) ✅
@@ -197,6 +205,7 @@ It is NOT yet declared frozen. **One item remains** before freeze can be declare
 - [x] KL-006 resolved: 437 integration tests pass, 0 product bugs found ✅
 - [x] KL-007 resolved: mobile app uses canonical `/api/v3/missions` ✅
 - [x] KL-008 resolved: stale WAITING_APPROVAL → FAILED on restart (Option B) ✅
+- [x] **KL-003 resolved: Docker live boot proven → COMPLETED with real LLM output** ✅
 
 **Production hardening (all required before any user traffic):**
 - [ ] Set `JARVIS_PRODUCTION=1` (enforces secret validation + disables SI)
@@ -221,7 +230,7 @@ It is NOT yet declared frozen. **One item remains** before freeze can be declare
 | Structured logs | **Beta** | mission_started / mission_completed / mission_failed |
 | Auth/security | **Beta** | JWT, 6 security rules, audit trail |
 | Mobile (Flutter) | **Alpha** | v3 migrated; device smoke test pending |
-| Docker deployment | **Alpha** | Static alignment done; live boot unproven |
+| Docker deployment | **Beta** | Live boot proven: COMPLETED in ~90s from cold start |
 | Tests | **Beta** | 95 unit + 437 integration pass; 0 product bugs; smoke tests need live server |
 | Memory (vector) | **Alpha** | Qdrant works; hybrid layering not activated |
 | Planning | **Alpha** | Hierarchical planner wired (Cycle 13); flat default for simple goals |

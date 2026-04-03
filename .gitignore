@@ -120,3 +120,4 @@ archive/legacy_apks/
 # -- Qdrant runtime data --------------------------------  
 storage/  
 .qdrant-initialized  
+
