@@ -242,12 +242,51 @@ class SandboxManager:
 # REGRESSION GUARD
 # ═══════════════════════════════════════════════════════════════
 
+_DOCKER_SOCKET = "/var/run/docker.sock"
+
+
+def _si_enabled() -> bool:
+    """
+    Self-improvement (SI) is disabled by default.
+
+    Requires explicit opt-in: JARVIS_ENABLE_SI=1
+    Must NOT be set in production unless the operator has:
+      1. Mounted /var/run/docker.sock into the container (required by RegressionGuard)
+      2. Accepted the privilege escalation risk that entails
+      3. Reviewed the safety zone configuration
+
+    Risk: /var/run/docker.sock access grants container-escape-level privileges.
+    Default: DISABLED (fail-closed).
+    """
+    return os.environ.get("JARVIS_ENABLE_SI", "0").strip().lower() in ("1", "true", "yes")
+
+
 class RegressionGuard:
     def __init__(self, repo_root: Path, docker_image: str = "jarvismax-jarvis:latest",
                  network: str = "jarvismax_jarvis_net"):
+        # ── SI safety gate ──────────────────────────────────────────
+        # RegressionGuard requires Docker socket access to spin test containers.
+        # Disabled by default — must be explicitly enabled via JARVIS_ENABLE_SI=1.
+        if not _si_enabled():
+            raise RuntimeError(
+                "RegressionGuard is disabled. "
+                "Set JARVIS_ENABLE_SI=1 to enable self-improvement. "
+                "WARNING: this requires /var/run/docker.sock mounted into the container "
+                "and grants container-level Docker privilege to the process."
+            )
+        import os as _os
+        if not _os.path.exists(_DOCKER_SOCKET):
+            raise RuntimeError(
+                f"RegressionGuard requires Docker socket at {_DOCKER_SOCKET} but it is not present. "
+                "Mount the Docker socket or disable SI."
+            )
         self.repo_root = repo_root
         self.docker_image = docker_image
         self.network = network
+        log.info("regression_guard.enabled",
+                 docker_image=docker_image,
+                 socket=_DOCKER_SOCKET,
+                 warning="Docker socket is mounted — container-level privilege is active")
 
     def run_tests(self, test_path: str, timeout: int = 120) -> dict:
         cmd = ["docker", "run", "--rm", "-v", f"{self.repo_root}:/app",
@@ -412,6 +451,8 @@ class ImprovementLoop:
                  network: str = "jarvismax_jarvis_net"):
         self.repo_root = Path(repo_root)
         self.sandbox = SandboxManager(self.repo_root)
+        # RegressionGuard raises RuntimeError if JARVIS_ENABLE_SI!=1 or Docker socket absent.
+        # Let the exception propagate — callers must handle it or not instantiate ImprovementLoop.
         self.guard = RegressionGuard(self.repo_root, docker_image, network)
         self.memory = LearningMemory(self.repo_root / "workspace" / ".improvement_lessons.json")
         self._reports_dir = self.repo_root / "workspace" / "improvement_reports"
