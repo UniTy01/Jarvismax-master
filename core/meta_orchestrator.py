@@ -1195,6 +1195,12 @@ class MetaOrchestrator:
                     )
                 except Exception:
                     pass
+                # Metrics store counter (admin panel)
+                try:
+                    from core.metrics_store import emit_mission_completed as _ms_completed
+                    _ms_completed("canonical", duration_ms=outcome.duration_ms)
+                except Exception:
+                    pass
                 # Kernel event: mission completed (dual emission)
                 try:
                     from kernel.convergence.event_bridge import emit_kernel_event
@@ -1340,6 +1346,12 @@ class MetaOrchestrator:
                         mission_id=mid, error=outcome.error[:200],
                         error_class=outcome.error_class,
                     )
+                except Exception:
+                    pass
+                # Metrics store counter (admin panel)
+                try:
+                    from core.metrics_store import emit_mission_failed as _ms_failed
+                    _ms_failed("canonical", reason=outcome.error_class)
                 except Exception:
                     pass
                 # Kernel event: mission failed (dual emission)

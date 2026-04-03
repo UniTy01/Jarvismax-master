@@ -38,13 +38,13 @@ router = APIRouter(prefix="/api/v3/extensions", tags=["extensions"])
 def _require_admin(request: Request) -> str:
     """Check admin permission. Returns actor identifier."""
     # Auth is enforced by global middleware; we check role here
-    token_info = getattr(request.state, "token_info", None)
+    token_info = getattr(request.state, "user", None)
     if not token_info:
         raise HTTPException(status_code=401, detail="Authentication required")
     role = token_info.get("role", "viewer")
     if role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
-    return token_info.get("name", token_info.get("sub", "admin"))
+    return token_info.get("username", token_info.get("sub", "admin"))
 
 
 EXT_TYPES = ("agents", "mcp", "skills", "tools")

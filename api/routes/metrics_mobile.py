@@ -40,6 +40,9 @@ if APIRouter:
             authorization = auth_str
             jwt_token = authorization[7:]  # type: ignore
         if jwt_token:
+            # Also accept static API token sent as Bearer token
+            if t and jwt_token == t:
+                return
             try:
                 from api._deps import _verify_jwt
                 if _verify_jwt(jwt_token):

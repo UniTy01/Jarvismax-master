@@ -302,7 +302,7 @@ class LearningLoop:
             "python", "async", "json", "api", "docker", "test", "llm",
             "prompt", "timeout", "retry", "cache", "memory", "sql",
         }
-        combined = (text + " " + context).lower()
+        combined = (text + " " + str(context)).lower()
         for kw in tech_kw:
             if kw in combined:
                 tags.add(kw)

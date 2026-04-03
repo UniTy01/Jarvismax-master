@@ -108,6 +108,13 @@ async def submit_mission(body: dict = Body(...), background_tasks: BackgroundTas
                 from core.orchestration_bridge import submit_mission as bridge_submit
                 result = bridge_submit(goal)
                 mission_id = result.get("mission_id")
+                # Track submission in metrics store (admin panel counters)
+                if result.get("ok"):
+                    try:
+                        from core.metrics_store import emit_mission_submitted
+                        emit_mission_submitted("canonical")
+                    except Exception:
+                        pass
                 # Trigger real execution in background — without this, mission stays READY forever
                 if background_tasks and mission_id and result.get("ok"):
                     _goal_capture = goal
