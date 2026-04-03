@@ -1,175 +1,147 @@
-# API Contract v1 — FROZEN 🔒
+# API Contract — FROZEN 🔒
+_Last updated: 2026-04-03 — Cycle 18 post-wave: contract realigned with actual runtime._
 
-> This contract is frozen. Changes require version bump.
-> Flutter mobile app MUST use only canonical endpoints.
-> All other endpoints are DEPRECATED or INTERNAL.
+> This contract is frozen. Changes require a version discussion.
+> The Flutter mobile app uses the canonical v3 endpoints listed below.
+> Previous v1 doc was incorrect — `/api/v3/*` are canonical, NOT internal.
 
 ---
 
 ## Authentication
 
-All endpoints (except health) require one of:
-- `X-Jarvis-Token: <token>` header
+All endpoints (except `/health`) require one of:
 - `Authorization: Bearer <token>` header
+- `X-Jarvis-Token: <token>` header
 
-In production (ENV=production), startup FAILS if token is missing.
+Token obtained via `POST /auth/token` (form-encoded).
+
+In `ENV=production`, startup FAILS if `JARVIS_SECRET_KEY` and `JARVIS_ADMIN_PASSWORD` are absent.
 
 ---
 
-## CANONICAL ENDPOINTS (v1)
+## CANONICAL ENDPOINTS (active, mobile-facing)
 
 These are the ONLY endpoints the Flutter app and external integrations should use.
 
-### POST /api/v1/mission/run
-Submit a new mission.
+### Auth
 
-**Request:**
-```json
-{"goal": "Identify 3 business opportunities for AI consultant"}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/token` | Login → returns `access_token` (JWT) |
 
-**Response:**
+### Missions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v3/missions` | Submit mission — body: `{"goal": "..."}` |
+| GET | `/api/v3/missions` | List all missions |
+| GET | `/api/v3/missions/{id}` | Mission detail |
+
+**Submit response shape:**
 ```json
 {
-  "status": "submitted",
   "data": {
     "mission_id": "abc123",
-    "status": "CREATED",
-    "plan_summary": "..."
+    "task_id": "abc123",
+    "status": "CREATED"
   }
 }
 ```
 
-### GET /api/v2/missions/{mission_id}
-Retrieve full mission result with envelope.
-
-**Response:**
+**Mission object shape:**
 ```json
 {
-  "ok": true,
-  "data": {
-    "mission_id": "abc123",
-    "status": "DONE",
-    "final_output": "# Résultats ...",
-    "result_envelope": {
-      "mission_id": "abc123",
-      "trace_id": "tr-a1b2c3d4e5f6",
-      "status": "COMPLETED",
-      "summary": "...",
-      "agent_outputs": [...],
-      "decision_trace": [...],
-      "metrics": {"duration_seconds": 45.14}
-    },
-    "decision_trace": {...}
-  }
+  "mission_id": "abc123",
+  "status": "COMPLETED",
+  "goal": "...",
+  "result": "...",
+  "agents": ["scout", "builder"],
+  "source_system": "meta_orchestrator",
+  "plan_summary": "...",
+  "error": null
 }
 ```
 
-### GET /api/v1/trace/{trace_id}
-Retrieve lifecycle events for a trace.
+### Approval / Reject (functional legacy — v2 path, still active)
 
-**Response:**
-```json
-{
-  "ok": true,
-  "data": {
-    "trace_id": "tr-a1b2c3d4e5f6",
-    "event_count": 5,
-    "events": [...]
-  }
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v2/tasks/{id}/approve` | Approve a pending action |
+| POST | `/api/v2/tasks/{id}/reject` | Reject a pending action — body: `{"note": "..."}` |
 
-### GET /api/v1/trace/mission/{mission_id}
-Retrieve all events for a mission across traces.
+> These are the working paths used by the Flutter app. v3 equivalents are not yet exposed.
 
-### POST /api/v1/missions/{mission_id}/approve
-Approve a pending mission.
+### System
 
-### POST /api/v1/missions/{mission_id}/reject
-Reject a mission.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check (no auth required) |
+| GET | `/api/v3/system/readiness` | Full readiness probe (providers, strategy) |
+| GET | `/api/v2/status` | Runtime stats (missions by status, mode) |
 
-### POST /api/v1/missions/{mission_id}/cancel
-Cancel a running mission.
+### Real-time
 
-### GET /api/v1/missions
-List all missions.
-
-### GET /api/health
-Health check (no auth required).
-
-### GET /api/v2/missions
-List all missions (alias, returns same data).
+| Protocol | Endpoint | Description |
+|----------|----------|-------------|
+| WebSocket | `/ws/stream?token=<jwt>` | Live mission events |
+| SSE | `/api/v1/missions/{id}/stream` | Per-mission event stream |
 
 ---
 
-## DEPRECATED ENDPOINTS
+## STATUS VOCABULARY (canonical)
 
-These exist for backward compatibility. DO NOT use in new code.
+| Backend value | Meaning | Mobile display |
+|---------------|---------|----------------|
+| `CREATED` | Just submitted | Loading |
+| `PLANNED` | Plan generated | In progress |
+| `RUNNING` | Agents executing | In progress |
+| `COMPLETED` | Success | DONE (normalized) |
+| `FAILED` | Error | FAILED |
+| `WAITING_APPROVAL` | Needs human gate | Approval required |
+| `APPROVED` | Gate passed | In progress |
+| `REJECTED` | Gate rejected | REJECTED |
+| `CANCELLED` | Aborted | FAILED (normalized) |
 
-| Deprecated | Canonical Replacement | Notes |
-|---|---|---|
-| POST /api/mission | POST /api/v1/mission/run | Legacy alias |
-| GET /api/missions | GET /api/v1/missions | Legacy alias |
-| GET /api/stats | GET /api/v2/system/health | Legacy |
-| POST /api/v2/missions/submit | POST /api/v1/mission/run | v2 alias |
-| POST /api/v2/task | — | Task queue (deprecated model) |
-| GET /api/v2/task/{id} | — | Task queue (deprecated model) |
-| GET /api/v2/tasks | — | Task queue (deprecated model) |
-| POST /api/v2/tasks/{id}/approve | POST /api/v1/missions/{id}/approve | v2 alias |
-| POST /api/v2/tasks/{id}/reject | POST /api/v1/missions/{id}/reject | v2 alias |
-
----
-
-## INTERNAL ENDPOINTS
-
-These serve admin/debug purposes. NOT part of the public contract.
-
-| Category | Endpoints | Auth |
-|---|---|---|
-| Monitoring | /api/v2/metrics, /api/v2/logs, /api/v2/diagnostics | Required |
-| Admin | /api/v2/debug/*, /api/v3/* | Required |
-| Learning | /api/v2/learning/* | Required |
-| Skills | /api/v2/skills/* | Required |
-| Self-improvement | /api/v2/self-improvement/* | Required |
-| Browser | /api/v2/browser/* | Required |
-| RAG | /api/v2/rag/* | Required |
-| Voice | /api/v2/voice/* | Required |
-| Objectives | /api/v2/objectives/* | Required |
-| Dashboard/Cockpit | /cockpit, /dashboard/* | Required |
+**Flutter normalization** (in `mission.dart`):
+- `COMPLETED` → `DONE`
+- `CANCELLED` → `FAILED`
 
 ---
 
-## WebSocket
+## DEPRECATED ENDPOINTS (exist, do not use in new code)
 
-### ws://{host}:{port}/ws/stream
-Real-time mission events. Auth via `?token=<jwt>` query param.
-
----
-
-## Result Envelope Invariants
-
-Every completed mission's `result_envelope` MUST contain:
-- `trace_id` (non-empty)
-- `status` (COMPLETED | FAILED | CANCELLED)
-- `summary` (string)
-- `agent_outputs` (list)
-- `decision_trace` (list)
-- `metrics` (dict with `duration_seconds`)
+| Deprecated | Canonical replacement |
+|---|---|
+| `POST /api/mission` | `POST /api/v3/missions` |
+| `GET /api/missions` | `GET /api/v3/missions` |
+| `POST /api/v2/task` | `POST /api/v3/missions` |
+| `GET /api/v2/missions` | `GET /api/v3/missions` |
+| `GET /api/v2/missions/{id}` | `GET /api/v3/missions/{id}` |
+| `POST /api/v2/missions/submit` | `POST /api/v3/missions` |
 
 ---
 
-## Status Flow
+## INTERNAL / ADMIN ENDPOINTS
 
-```
-CREATED → ANALYZING → PENDING_VALIDATION → APPROVED → EXECUTING → DONE
-                                         → REJECTED
-                                         → BLOCKED
-```
+These serve admin/debug purposes. Not part of the mobile contract.
 
-## Versioning Policy
+| Category | Prefix |
+|---|---|
+| Admin debug | `/api/v2/debug/*` |
+| Metrics | `/api/v2/metrics/*` |
+| Logs | `/api/v2/logs/*` |
+| Learning | `/api/v2/learning/*` |
+| Skills | `/api/v2/skills/*` |
+| Self-improvement | `/api/v2/self-improvement/*` |
+| Models | `/api/v3/models/*` |
+| Modules | `/api/v3/modules/*` |
+| AIOS dashboard | `/aios/*` |
+
+---
+
+## VERSIONING POLICY
 
 - Bug fixes: allowed in-place
 - New optional response fields: allowed
-- Breaking changes: NOT ALLOWED, requires v2 proposal
-- Endpoint removal: NOT ALLOWED in v1 lifetime
+- Breaking field renames: NOT ALLOWED, requires migration path
+- Endpoint removal: NOT ALLOWED without explicit deprecation + 1 cycle notice

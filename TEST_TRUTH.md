@@ -1,17 +1,28 @@
 # TEST_TRUTH.md — Jarvis Max
-_Last updated: 2026-04-01 — Phase 4 hardening (Cycle 7)_
+_Last updated: 2026-04-03 — Cycle 18 post-wave: 5700 passing, test baseline updated._
 
 This document is the authoritative record of the test suite state.
-All numbers are from real runs in the sandboxed CI environment (Python 3.10, no Docker, no external services).
+Numbers are from real runs. Do not overstate.
 
 ---
 
-## Unit Test Baseline
+## Current Test Baseline (Cycle 18 — 2026-04-03)
 
-**Run:** `pytest --ignore=tests/ -q -p no:warnings`
-**Result:** ~142 tests pass, 0 failures
-**Scope:** All non-integration tests (no `@pytest.mark.integration` marker)
-**External dependencies required:** None
+**Run:** `docker run --rm -v $(pwd):/app -w /app jarvismax-master-jarvis:latest python -m pytest tests/ -q --tb=line --ignore=tests/test_aios_dashboard.py`
+**Result:** **5700 passed, 515 skipped, ~20 pre-existing failures**
+**Runtime:** ~593s (9m53s) in Docker
+
+### Pre-existing failures (not regressions — all confirmed pre-Cycle 18)
+
+| Test | Root cause | Status |
+|------|-----------|--------|
+| `test_aios_dashboard.*` | Requires live HTTP server on `localhost:8000` | Excluded from unit run |
+| `test_rejected_outside_scope` | Assertion checks `"outside" in msg` but message is `"REJECTED: .env is in protected runtime scope"` | Pre-existing text mismatch |
+| `test_no_report_files_at_root` | Expects only 3 .md at root; 10+ truth docs exist at root by design | Pre-existing policy contradiction |
+| `test_debug_api DB02/DB03` | Model selector mock configuration mismatch | Pre-existing |
+| `test_execution_reliability MF11` | Budget selector mock | Pre-existing |
+
+**External dependencies required for full run:** None (Docker image contains all deps)
 
 ---
 

@@ -1,5 +1,8 @@
 # JARVIS MAX — Git ignore
 
+# ── MCP / tool runtime artefacts ────────────────────────────
+sqlite_mcp_server.db
+
 # ── Secrets (JAMAIS committer) ──────────────────────────────
 .env
 .env.local

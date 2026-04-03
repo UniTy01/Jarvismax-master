@@ -1,5 +1,5 @@
 # PRODUCTIZATION_ROADMAP.md — Jarvis Max
-_Written: 2026-04-01 — Post backend-freeze (Cycles 8–14)_
+_Last updated: 2026-04-03 — Cycle 18: Backend hardening complete. Track 1 blockers resolved. Shifting to product._
 
 This document defines the exact next steps to go from backend-frozen to a shippable product.
 Backend is NOT touched. Everything here is product layer, external validation, and go-to-market.
@@ -21,22 +21,11 @@ Short version:
 
 ---
 
-## TRACK 1 — External validation (parallel with Track 2, week 1–2)
+## TRACK 1 — External validation status (2026-04-03)
 
-These are the three remaining backend blockers that require real environment, not code.
-
-### 1.1 Docker live boot proof (priority: CRITICAL)
-**Command (ready to run on any machine with Docker):**
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # or OPENROUTER_API_KEY
-export JARVIS_ADMIN_PASSWORD=mypassword
-export JARVIS_SECRET_KEY=$(openssl rand -hex 32)
-docker compose -f docker-compose.test.yml up --build -d
-JARVIS_ADMIN_PASSWORD=mypassword bash scripts/verify_boot.sh
-# Expected: "BOOT VERIFICATION PASSED" within 90s
-```
-**Success criteria**: `verify_boot.sh` exits 0. Logs `mission_completed` event.
-**Owner**: needs Docker daemon (not available in dev env).
+### 1.1 Docker live boot proof ✅ PROVEN (Cycle 17)
+Mission `43147205-391` → `COMPLETED`, 521 chars real LLM output.
+`verify_boot.sh` exits 0. Logs `mission_completed`. **No longer a blocker.**
 
 ### 1.2 Mobile device smoke test
 **Pre-requisites**: Android/iOS device or emulator + running Jarvis server (local or VPS).
@@ -171,3 +160,71 @@ Week 4+: 3.2–3.5 based on user feedback + Track 4 monetization
 - Do NOT implement Stripe before at least one paying customer
 - Do NOT rebuild the Flutter app from scratch (migrate incrementally)
 - Do NOT add Kubernetes / distributed infra before scale demands it
+
+---
+
+## TRACK 5 — First Product Direction (2026-04-03, post-Cycle 18)
+
+### Selected product: AI Business Consultant / Strategy Operator
+
+**Why this is the right first product:**
+- 16 business skills already built in `business/skills/`: market_research, competitor_analysis, positioning, pricing_strategy, growth_plan, funnel_design, value_proposition, offer_design, customer_persona, acquisition_strategy, copywriting, landing_structure, spec_writing, saas_scope, automation_opportunity, strategy_reasoning
+- Backend can execute complex multi-step business analysis missions today
+- No new agent code needed — mission routing handles skill selection
+- Target user: entrepreneur, early-stage founder, consultant, solo operator
+
+### Core user workflow
+
+```
+1. User opens app (mobile or web)
+2. Selects a business task type (or free-text goal)
+3. Submits: "Analyse le marché des outils IA pour PME en France"
+4. Backend routes to appropriate business skills (market_research + competitor_analysis + positioning)
+5. Multi-agent execution returns structured report
+6. User reads, downloads, or shares the result
+7. If risk level triggers approval gate → user reviews before execution continues
+```
+
+### Required frontend screens (minimum viable)
+
+| Screen | Status | Priority |
+|--------|--------|----------|
+| Login | ✅ Done | — |
+| Mission submit (free text) | ✅ Done | — |
+| Mission list + status | ✅ Done | — |
+| Mission detail + result display | ✅ Done | — |
+| Approval card | ✅ Done | — |
+| **Task type selector** (choose skill category) | ❌ Missing | HIGH |
+| **Result export** (copy / share / PDF) | ❌ Missing | HIGH |
+| **Admin panel** (metrics, model cost, system health) | ❌ Missing | MEDIUM |
+| **French-first UI** (all labels in French) | ⚠️ Partial | MEDIUM |
+
+### Backend capabilities already sufficient
+
+| Capability | Status |
+|---|---|
+| Business skill execution | ✅ Active (`business/skills/`) |
+| Multi-agent orchestration | ✅ Proven |
+| Mission persistence | ✅ Proven |
+| Approval gate | ✅ Proven |
+| JWT auth | ✅ Proven |
+| Model cost control | ✅ Proven |
+| Structured output | ✅ Proven |
+
+### Remaining product gaps (not backend gaps)
+
+1. **Task type selector in mobile app** — let user pick a business domain before submitting
+2. **Result export** — copy to clipboard / share sheet / export as markdown
+3. **French UI** — all tab labels, messages, error strings in French
+4. **Admin view** — model cost, recent missions summary, system health (for operator)
+5. **Onboarding** — first-time user explanation (what can Jarvis do?)
+
+### Sequencing (realistic, post-Cycle 18)
+
+```
+Week 1:  French UI labels + result copy/share button + mobile smoke test
+Week 2:  Task type selector + admin panel (simple metrics view)
+Week 3:  Device test + first internal user / founder feedback
+Week 4:  Iterate on product UX based on real usage
+Month 2: Consider web frontend (Next.js) if mobile-only limits reach
+```
