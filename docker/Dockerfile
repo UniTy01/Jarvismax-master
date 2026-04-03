@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
+# NOTE: git is required by core/self_improvement/git_agent.py (subprocess git commands).
+# If SI is fully disabled in prod, git can be removed to reduce attack surface.
 
 # Node.js 22 LTS — required for MCP server stdio transport (npx)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \

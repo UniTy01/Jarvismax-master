@@ -60,7 +60,19 @@ class MemoryMetadata:
 # ── Memory Layer API ─────────────────────────────────────────────────────────
 
 class MemoryLayer:
-    """AI OS memory layer wrapping MemoryStore with structured types and relevance."""
+    """
+    AI OS memory layer wrapping MemoryStore with structured types and relevance.
+
+    STATUS — NOT WIRED INTO AGENT RUNTIME (2026-04-03).
+
+    This abstraction is fully implemented but agents currently write to Qdrant
+    (vector memory) directly rather than routing through MemoryLayer.
+    Two memory paths coexist: Qdrant direct (active) vs MemoryLayer (inactive).
+
+    Activation requires: plugging MemoryLayer into ParallelExecutor/AgentCrew
+    as the canonical write path, then migrating Qdrant writes to use it.
+    Until that is done, this class is available but not exercised at runtime.
+    """
     
     def __init__(self, store=None):
         """Initialize with existing MemoryStore or create one."""

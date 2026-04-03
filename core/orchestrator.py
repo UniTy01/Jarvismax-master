@@ -66,6 +66,12 @@ class JarvisOrchestrator:
     }
 
     def __init__(self, settings=None):
+        import warnings
+        warnings.warn(
+            "JarvisOrchestrator is deprecated — use get_meta_orchestrator() from core.meta_orchestrator instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.s      = settings or get_settings()
         self.router = TaskRouter()
         self._agents       = None

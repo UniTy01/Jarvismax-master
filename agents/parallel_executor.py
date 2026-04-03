@@ -41,6 +41,33 @@ _DEFAULT_AGENT_TIMEOUT = 90      # secondes par agent
 _DEFAULT_GLOBAL_TIMEOUT = 300    # secondes pour tout le batch
 
 _TRACE_LOG = Path("workspace/execution_trace.jsonl")
+# Rotation: keep max 50 MB of trace history.
+# When the file exceeds this, the oldest half is dropped (fast tail-truncation strategy).
+_TRACE_LOG_MAX_BYTES = 50 * 1024 * 1024   # 50 MB
+
+
+def _rotate_trace_log_if_needed() -> None:
+    """Rotate execution_trace.jsonl when it exceeds _TRACE_LOG_MAX_BYTES.
+
+    Strategy: keep the newest ~half of the file by reading all lines,
+    dropping the oldest 50%, and rewriting. Simple and dependency-free.
+    Fail-open: any error is silently ignored (trace is optional observability).
+    """
+    try:
+        if not _TRACE_LOG.exists():
+            return
+        if _TRACE_LOG.stat().st_size < _TRACE_LOG_MAX_BYTES:
+            return
+        lines = _TRACE_LOG.read_bytes().split(b"\n")
+        lines = [l for l in lines if l.strip()]
+        keep = lines[len(lines) // 2:]   # keep newest half
+        _TRACE_LOG.write_bytes(b"\n".join(keep) + b"\n")
+        log.info("trace_log_rotated",
+                 kept_lines=len(keep),
+                 dropped_lines=len(lines) - len(keep))
+    except Exception:
+        pass
+
 
 # Seuil d'output vide — déclenche un retry automatique
 _MIN_OUTPUT_LEN = 10
@@ -65,6 +92,7 @@ def _append_trace_log(mission_id: str, trace: AgentTrace) -> None:
     """Append un AgentTrace dans workspace/execution_trace.jsonl (fail-open)."""
     try:
         _TRACE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        _rotate_trace_log_if_needed()
         record = {"mission_id": mission_id, "ts": time.time(), **trace.to_dict()}
         with _TRACE_LOG.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
