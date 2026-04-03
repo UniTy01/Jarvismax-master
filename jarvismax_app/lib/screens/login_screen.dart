@@ -259,9 +259,17 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (ok) {
+      // Fetch actual role from server instead of hardcoding 'user'
+      String resolvedRole = 'user';
+      try {
+        final meResp = await api.getJson('/auth/me');
+        if (meResp != null && meResp['user'] != null) {
+          resolvedRole = (meResp['user']['role'] as String? ?? 'user');
+        }
+      } catch (_) {}
       await SessionManager.instance.saveSession(
         token: token, loginMode: 'token',
-        role: 'user', rememberMe: _rememberMe,
+        role: resolvedRole, rememberMe: _rememberMe,
       );
       widget.onLoginSuccess();
     } else {
