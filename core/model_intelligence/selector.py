@@ -467,11 +467,12 @@ class ModelSelector:
         performance = self._get_performance()
 
         # Weights based on budget mode
+        # normal: profile (quality) dominates — cost is secondary when credits exist
         weights = {
             "critical": (0.5, 0.4, 0.1),
-            "normal": (0.3, 0.3, 0.4),
+            "normal": (0.50, 0.35, 0.15),
             "budget": (0.2, 0.2, 0.6),
-        }.get(budget_mode, (0.3, 0.3, 0.4))
+        }.get(budget_mode, (0.50, 0.35, 0.15))
         w_profile, w_perf, w_cost = weights
 
         candidates: list[SelectionResult] = []
