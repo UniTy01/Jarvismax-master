@@ -42,14 +42,14 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                 SliverToBoxAdapter(child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                   child: Row(children: [
-                    const Text('Approvals', style: TextStyle(
+                    const Text('Approbations', style: TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w700,
                       color: JDS.textPrimary, letterSpacing: -0.3,
                     )),
                     const Spacer(),
                     if (pending.isNotEmpty)
                       JStatusBadge(
-                        label: '${pending.length} PENDING',
+                        label: '${pending.length} EN ATTENTE',
                         color: JDS.amber,
                       ),
                   ]),
@@ -59,15 +59,15 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                 if (pending.isEmpty && recent.isEmpty)
                   SliverFillRemaining(child: JEmptyState(
                     icon: Icons.check_circle_outline_rounded,
-                    title: 'All clear',
-                    subtitle: 'Nothing needs your approval right now.\nJarvis is handling everything automatically.',
+                    title: 'Tout est bon',
+                    subtitle: 'Aucune approbation requise pour l\'instant.\nJarvis gère tout automatiquement.',
                   )),
 
                 // ── Pending section ──
                 if (pending.isNotEmpty) ...[
                   SliverToBoxAdapter(child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    child: JSectionHeader(title: 'Needs your decision', count: '${pending.length}'),
+                    child: JSectionHeader(title: 'Décision requise', count: '${pending.length}'),
                   )),
                   SliverList(delegate: SliverChildBuilderDelegate(
                     (_, i) => Padding(
@@ -82,7 +82,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                 if (recent.isNotEmpty) ...[
                   SliverToBoxAdapter(child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                    child: JSectionHeader(title: 'Recently resolved', count: '${recent.length}'),
+                    child: JSectionHeader(title: 'Récemment résolues', count: '${recent.length}'),
                   )),
                   SliverList(delegate: SliverChildBuilderDelegate(
                     (_, i) => Padding(
@@ -143,7 +143,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
         const SizedBox(height: 14),
 
         // What
-        const Text('Jarvis wants to:', style: TextStyle(
+        const Text('Jarvis veut :', style: TextStyle(
           fontSize: 11, fontWeight: FontWeight.w600, color: JDS.textMuted,
           letterSpacing: 0.5,
         )),
@@ -170,7 +170,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Icon(Icons.trending_up_rounded, size: 14, color: JDS.textMuted),
             const SizedBox(width: 6),
-            Expanded(child: Text('Impact: ${a.impact}', style: const TextStyle(
+            Expanded(child: Text('Impact : ${a.impact}', style: const TextStyle(
               fontSize: 13, color: JDS.textSecondary,
             ))),
           ]),
@@ -190,8 +190,8 @@ class _ApprovalCardState extends State<_ApprovalCard> {
                 color: JDS.green, shape: BoxShape.circle,
               )),
               const SizedBox(width: 8),
-              const Text('If approved: ', style: TextStyle(fontSize: 12, color: JDS.green, fontWeight: FontWeight.w500)),
-              const Expanded(child: Text('Jarvis proceeds with this action', style: TextStyle(
+              const Text('Si approuvé : ', style: TextStyle(fontSize: 12, color: JDS.green, fontWeight: FontWeight.w500)),
+              const Expanded(child: Text('Jarvis exécute cette action', style: TextStyle(
                 fontSize: 12, color: JDS.textSecondary,
               ))),
             ]),
@@ -201,8 +201,8 @@ class _ApprovalCardState extends State<_ApprovalCard> {
                 color: JDS.textDim, shape: BoxShape.circle,
               )),
               const SizedBox(width: 8),
-              const Text('If denied: ', style: TextStyle(fontSize: 12, color: JDS.textDim, fontWeight: FontWeight.w500)),
-              const Expanded(child: Text('Action is skipped, mission continues', style: TextStyle(
+              const Text('Si refusé : ', style: TextStyle(fontSize: 12, color: JDS.textDim, fontWeight: FontWeight.w500)),
+              const Expanded(child: Text('Action ignorée, mission continue', style: TextStyle(
                 fontSize: 12, color: JDS.textSecondary,
               ))),
             ]),
@@ -217,7 +217,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
             maxLines: 2,
             style: const TextStyle(fontSize: 13, color: JDS.textPrimary),
             decoration: const InputDecoration(
-              hintText: 'Optional: add a note…',
+              hintText: 'Optionnel : ajouter une note…',
               contentPadding: EdgeInsets.all(12),
             ),
           ),
@@ -248,7 +248,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
                   side: const BorderSide(color: JDS.red),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                 ),
-                child: const Text('Deny'),
+                child: const Text('Refuser'),
               ),
             ),
             const SizedBox(width: 10),
@@ -261,7 +261,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
                   backgroundColor: JDS.green,
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                 ),
-                child: const Text('Approve', style: TextStyle(fontWeight: FontWeight.w600)),
+                child: const Text('Approuver', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ]),
@@ -274,7 +274,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
     final result = await ctx.read<ApiService>().approveAction(a.id);
     if (!mounted) return;
     setState(() => _acting = false);
-    _showResult(ctx, result.ok, result.ok ? 'Approved' : (result.error ?? 'Error'));
+    _showResult(ctx, result.ok, result.ok ? 'Approuvé' : (result.error ?? 'Erreur'));
   }
 
   Future<void> _deny(BuildContext ctx) async {
@@ -282,7 +282,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
     final result = await ctx.read<ApiService>().rejectAction(a.id);
     if (!mounted) return;
     setState(() => _acting = false);
-    _showResult(ctx, result.ok, result.ok ? 'Denied' : (result.error ?? 'Error'));
+    _showResult(ctx, result.ok, result.ok ? 'Refusé' : (result.error ?? 'Erreur'));
   }
 
   void _showResult(BuildContext ctx, bool ok, String msg) {
@@ -305,10 +305,10 @@ class _ApprovalCardState extends State<_ApprovalCard> {
 /// Human-friendly risk labels for approval cards.
 String _riskLabel(String risk) {
   switch (risk.toLowerCase()) {
-    case 'high':     return 'High risk';
-    case 'medium':   return 'Medium risk';
-    case 'critical': return 'High risk';
-    default:         return 'Low risk';
+    case 'high':     return 'Risque élevé';
+    case 'medium':   return 'Risque moyen';
+    case 'critical': return 'Risque critique';
+    default:         return 'Risque faible';
   }
 }
 
@@ -334,7 +334,7 @@ class _ResolvedCard extends StatelessWidget {
           fontSize: 13, color: JDS.textPrimary,
         ), maxLines: 2, overflow: TextOverflow.ellipsis)),
         JStatusBadge(
-          label: ok ? 'DONE' : 'DENIED',
+          label: ok ? 'FAIT' : 'REFUSÉ',
           color: ok ? JDS.green : JDS.textDim,
         ),
       ]),

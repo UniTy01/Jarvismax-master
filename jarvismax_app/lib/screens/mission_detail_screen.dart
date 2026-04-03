@@ -750,7 +750,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      _InfoRow('Intent', _mission.intent),
+                      _InfoRow('Intention', _mission.intent),
                       if (_mission.createdAt.isNotEmpty)
                         _InfoRow('Créée le',
                             _formatDate(_mission.createdAt)),
@@ -773,7 +773,46 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
 
                 // ── Réponse Jarvis ──────────────────────────────────────
                 if (_mission.isDone || _mission.finalOutput.isNotEmpty) ...[
-                  const SectionLabel('Réponse de Jarvis'),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        const Text('Réponse de Jarvis', style: TextStyle(
+                          color: JvColors.textMut, fontSize: 10,
+                          fontWeight: FontWeight.w700, letterSpacing: 1.2,
+                        )),
+                        const Spacer(),
+                        if (_mission.finalOutput.isNotEmpty) ...[
+                          GestureDetector(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: _mission.finalOutput));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Résultat copié'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: JvColors.cyan.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: JvColors.cyan.withValues(alpha: 0.3)),
+                              ),
+                              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.copy_outlined, size: 12, color: JvColors.cyan),
+                                SizedBox(width: 4),
+                                Text('Copier', style: TextStyle(
+                                  color: JvColors.cyan, fontSize: 11, fontWeight: FontWeight.w600,
+                                )),
+                              ]),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),

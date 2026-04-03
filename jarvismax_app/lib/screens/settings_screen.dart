@@ -29,7 +29,7 @@ class SettingsScreen extends StatelessWidget {
           // ── Header ──
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-            child: const Text('Settings', style: TextStyle(
+            child: const Text('Paramètres', style: TextStyle(
               fontSize: 22, fontWeight: FontWeight.w700,
               color: JDS.textPrimary, letterSpacing: -0.3,
             )),
@@ -41,21 +41,21 @@ class SettingsScreen extends StatelessWidget {
             child: JCard(child: Column(children: [
               _StatusRow(
                 icon: Icons.cloud_outlined,
-                label: 'Server',
-                value: api.status.isOnline ? 'Connected' : 'Offline',
+                label: 'Serveur',
+                value: api.status.isOnline ? 'Connecté' : 'Hors ligne',
                 color: api.status.isOnline ? JDS.green : JDS.red,
               ),
               const Divider(height: 20),
               _StatusRow(
                 icon: Icons.sync_alt_rounded,
                 label: 'WebSocket',
-                value: ws.isConnected ? 'Active' : 'Disconnected',
+                value: ws.isConnected ? 'Actif' : 'Déconnecté',
                 color: ws.isConnected ? JDS.green : JDS.textDim,
               ),
               const Divider(height: 20),
               _StatusRow(
                 icon: Icons.dns_outlined,
-                label: 'Endpoint',
+                label: 'Adresse',
                 value: config.baseUrl.replaceFirst('http://', '').replaceFirst('https://', ''),
                 color: JDS.textSecondary,
               ),
@@ -65,14 +65,14 @@ class SettingsScreen extends StatelessWidget {
           // ── Account ──
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: JSectionHeader(title: 'Account'),
+            child: JSectionHeader(title: 'Compte'),
           )),
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: JCard(child: Column(children: [
               _SettingsItem(
                 icon: Icons.logout_rounded,
-                label: 'Sign out',
+                label: 'Se déconnecter',
                 color: JDS.red,
                 onTap: () => _logout(context),
               ),
@@ -82,7 +82,7 @@ class SettingsScreen extends StatelessWidget {
           // ── Advanced ──
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-            child: JSectionHeader(title: 'Advanced'),
+            child: JSectionHeader(title: 'Avancé'),
           )),
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -90,35 +90,35 @@ class SettingsScreen extends StatelessWidget {
               _NavItem(
                 icon: Icons.extension_rounded,
                 label: 'Modules',
-                subtitle: 'Agents, skills, connectors, MCP',
+                subtitle: 'Agents, compétences, connecteurs, MCP',
                 onTap: () => _push(context, const ModulesScreen()),
               ),
               const Divider(height: 1, indent: 52),
               _NavItem(
                 icon: Icons.memory_rounded,
-                label: 'AI OS Dashboard',
-                subtitle: 'System overview and diagnostics',
+                label: 'Tableau de bord',
+                subtitle: 'Vue système et diagnostics',
                 onTap: () => _push(context, const AIOSDashboardScreen()),
               ),
               const Divider(height: 1, indent: 52),
               _NavItem(
                 icon: Icons.category_rounded,
-                label: 'Capabilities',
-                subtitle: 'Available tools and routing',
+                label: 'Capacités',
+                subtitle: 'Outils disponibles et routage',
                 onTap: () => _push(context, const CapabilitiesScreen()),
               ),
               const Divider(height: 1, indent: 52),
               _NavItem(
                 icon: Icons.auto_fix_high_rounded,
-                label: 'Self-Improvement',
-                subtitle: 'Autonomous patching and lessons',
+                label: 'Auto-amélioration',
+                subtitle: 'Patchs autonomes et apprentissage',
                 onTap: () => _push(context, const SelfImprovementScreen()),
               ),
               const Divider(height: 1, indent: 52),
               _NavItem(
                 icon: Icons.monitor_heart_outlined,
-                label: 'System Health',
-                subtitle: 'Metrics, uptime, resource usage',
+                label: 'Santé système',
+                subtitle: 'Métriques, disponibilité, ressources',
                 onTap: () => _push(context, const HealthScreen()),
               ),
             ])),
@@ -155,15 +155,15 @@ class SettingsScreen extends StatelessWidget {
       builder: (c) => AlertDialog(
         backgroundColor: JDS.bgElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(JDS.radiusLg)),
-        title: const Text('Sign out?', style: TextStyle(color: JDS.textPrimary)),
-        content: const Text('You will need to sign in again.',
+        title: const Text('Se déconnecter ?', style: TextStyle(color: JDS.textPrimary)),
+        content: const Text('Vous devrez vous reconnecter.',
             style: TextStyle(color: JDS.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false),
-              child: const Text('Cancel')),
+              child: const Text('Annuler')),
           TextButton(onPressed: () => Navigator.pop(c, true),
               style: TextButton.styleFrom(foregroundColor: JDS.red),
-              child: const Text('Sign out')),
+              child: const Text('Déconnecter')),
         ],
       ),
     );

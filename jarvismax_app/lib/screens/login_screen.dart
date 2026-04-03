@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final session = await SessionManager.instance.restoreSession();
     if (session == null) return;
 
-    setState(() { _loading = true; _info = 'Restoring session…'; });
+    setState(() { _loading = true; _info = 'Restauration de session…'; });
 
     final api = context.read<ApiService>();
     final ok = await api.loginWithToken(session.token);
@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await SessionManager.instance.logout();
     setState(() {
       _loading = false; _info = '';
-      _error = 'Session expired. Please sign in again.';
+      _error = 'Session expirée. Reconnectez-vous.';
       if (session.loginMode == 'admin') {
         _showAdmin = true;
         _userCtrl.text = session.username;
@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: JDS.textMuted, letterSpacing: 1,
               )),
               const SizedBox(height: 8),
-              const Text('Enter your access token to get started',
+              const Text('Entrez votre token d\'accès pour commencer',
                   style: TextStyle(fontSize: 14, color: JDS.textSecondary)),
               const SizedBox(height: 32),
 
@@ -138,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   style: const TextStyle(color: JDS.textPrimary, fontSize: 16),
                   decoration: const InputDecoration(
-                    hintText: 'Access token (jv-…)',
+                    hintText: 'Token d\'accès (jv-…)',
                     prefixIcon: Icon(Icons.key_rounded, color: JDS.textMuted),
                   ),
                   onSubmitted: (_) => _loginWithToken(),
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity, height: 48,
                   child: ElevatedButton(
                     onPressed: _loginWithToken,
-                    child: const Text('Sign in', style: TextStyle(fontSize: 15)),
+                    child: const Text('Se connecter', style: TextStyle(fontSize: 15)),
                   ),
                 ),
               ],
@@ -189,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('Remember me',
+                    const Text('Se souvenir de moi',
                         style: TextStyle(color: JDS.textSecondary, fontSize: 13)),
                   ]),
                 ),
@@ -203,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Icon(_showAdmin ? Icons.expand_less : Icons.expand_more,
                         size: 16, color: JDS.textMuted),
                     const SizedBox(width: 4),
-                    Text(_showAdmin ? 'Hide admin login' : 'Admin login',
+                    Text(_showAdmin ? 'Masquer la connexion admin' : 'Connexion admin',
                         style: const TextStyle(color: JDS.textMuted, fontSize: 13)),
                   ]),
                 ),
@@ -214,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _userCtrl,
                     style: const TextStyle(color: JDS.textPrimary),
                     decoration: const InputDecoration(
-                      hintText: 'Username',
+                      hintText: 'Nom d\'utilisateur',
                       prefixIcon: Icon(Icons.person_rounded, color: JDS.textMuted),
                     ),
                   ),
@@ -224,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: true,
                     style: const TextStyle(color: JDS.textPrimary),
                     decoration: const InputDecoration(
-                      hintText: 'Password',
+                      hintText: 'Mot de passe',
                       prefixIcon: Icon(Icons.lock_rounded, color: JDS.textMuted),
                     ),
                     onSubmitted: (_) => _loginWithCredentials(),
@@ -234,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity, height: 48,
                     child: OutlinedButton(
                       onPressed: _loginWithCredentials,
-                      child: const Text('Admin sign in'),
+                      child: const Text('Se connecter (admin)'),
                     ),
                   ),
                 ],
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithToken() async {
     final token = _tokenCtrl.text.trim();
     if (token.isEmpty) {
-      setState(() => _error = 'Please enter your access token.');
+      setState(() => _error = 'Veuillez saisir votre token d\'accès.');
       return;
     }
     setState(() { _loading = true; _error = ''; });
@@ -267,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       setState(() {
         _loading = false;
-        _error = 'Invalid access token. Please check and try again.';
+        _error = 'Token invalide. Vérifiez et réessayez.';
       });
     }
   }
@@ -276,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final username = _userCtrl.text.trim();
     final password = _passCtrl.text.trim();
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please enter username and password.');
+      setState(() => _error = 'Saisissez le nom d\'utilisateur et le mot de passe.');
       return;
     }
     setState(() { _loading = true; _error = ''; });
@@ -296,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       setState(() {
         _loading = false;
-        _error = 'Invalid credentials. Please try again.';
+        _error = 'Identifiants invalides. Réessayez.';
       });
     }
   }

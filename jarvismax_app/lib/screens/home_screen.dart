@@ -119,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
                 child: JSectionHeader(
-                  title: 'Recent Missions',
+                  title: 'Missions récentes',
                   count: '${api.missions.length}',
                   action: TextButton(
                     onPressed: () => api.refresh(),
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text('Refresh', style: TextStyle(
+                    child: const Text('Actualiser', style: TextStyle(
                       fontSize: 12, color: JDS.textMuted,
                     )),
                   ),
@@ -149,8 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: JEmptyState(
                     icon: Icons.rocket_launch_outlined,
-                    title: 'No missions yet',
-                    subtitle: 'Describe a task above to get started',
+                    title: 'Aucune mission',
+                    subtitle: 'Décrivez une tâche ci-dessus pour commencer',
                   ),
                 ))
               else
@@ -175,18 +175,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _dateString() {
     final now = DateTime.now();
-    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['January', 'February', 'March', 'April', 'May', 'June',
-                    'July', 'August', 'September', 'October', 'November', 'December'];
-    return '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
+    final weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    final months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    return '${weekdays[now.weekday - 1]} ${now.day} ${months[now.month - 1]}';
   }
 
   String _greetingText() {
     final h = DateTime.now().hour;
-    if (h < 6) return 'Working late?';
-    if (h < 12) return 'Good morning.';
-    if (h < 18) return 'Good afternoon.';
-    return 'Good evening.';
+    if (h < 6) return 'Vous travaillez tard ?';
+    if (h < 12) return 'Bonjour.';
+    if (h < 18) return 'Bon après-midi.';
+    return 'Bonsoir.';
   }
 
   Future<void> _send() async {
@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result != null) {
         setState(() {
           _sending = false;
-          _feedback = '✓ Mission started';
+          _feedback = '✓ Mission lancée';
           _feedbackIsError = false;
         });
         _controller.clear();
@@ -211,14 +211,14 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         setState(() {
           _sending = false;
-          _feedback = 'Failed to submit mission';
+          _feedback = 'Échec d\'envoi de la mission';
           _feedbackIsError = true;
         });
       }
     } catch (e) {
       if (mounted) setState(() {
         _sending = false;
-        _feedback = 'Connection error';
+        _feedback = 'Erreur de connexion';
         _feedbackIsError = true;
       });
     }
@@ -265,7 +265,7 @@ class _ConnectionIndicator extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(connected ? 'Online' : 'Offline', style: TextStyle(
+        Text(connected ? 'En ligne' : 'Hors ligne', style: TextStyle(
           fontSize: 11, fontWeight: FontWeight.w500,
           color: connected ? JDS.textSecondary : JDS.textDim,
         )),
@@ -295,9 +295,9 @@ class _ApprovalAlert extends StatelessWidget {
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('$count item${count > 1 ? 's' : ''} need${count == 1 ? 's' : ''} your review',
+            Text('$count élément${count > 1 ? 's' : ''} attend${count == 1 ? '' : 'ent'} votre décision',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: JDS.amber)),
-            const Text('Jarvis needs your decision before proceeding',
+            const Text('Jarvis attend votre validation avant de continuer',
                 style: TextStyle(fontSize: 12, color: JDS.textSecondary)),
           ],
         )),
@@ -339,7 +339,7 @@ class _Composer extends StatelessWidget {
           minLines: 2,
           style: const TextStyle(color: JDS.textPrimary, fontSize: 15, height: 1.5),
           decoration: const InputDecoration(
-            hintText: 'What do you need? Research, analysis, code, automation…',
+            hintText: 'Que voulez-vous faire ? Recherche, analyse, code, automatisation…',
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
@@ -349,7 +349,7 @@ class _Composer extends StatelessWidget {
         ),
         const Divider(height: 24),
         Row(children: [
-          const Text('Jarvis will handle the rest', style: TextStyle(
+          const Text('Jarvis s\'occupe du reste', style: TextStyle(
             fontSize: 12, color: JDS.textDim,
           )),
           const Spacer(),
@@ -366,7 +366,7 @@ class _Composer extends StatelessWidget {
                   : const Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.play_arrow_rounded, size: 16),
                       SizedBox(width: 4),
-                      Text('Run'),
+                      Text('Lancer'),
                     ]),
             ),
           ),
@@ -427,15 +427,15 @@ class _StatsRow extends StatelessWidget {
         m.status.toLowerCase() == 'failed').length;
 
     return Row(children: [
-      Expanded(child: _StatTile(value: '$running', label: 'Active', color: JDS.blue)),
+      Expanded(child: _StatTile(value: '$running', label: 'Actif', color: JDS.blue)),
       const SizedBox(width: 10),
-      Expanded(child: _StatTile(value: '$done', label: 'Done', color: JDS.green)),
+      Expanded(child: _StatTile(value: '$done', label: 'Terminé', color: JDS.green)),
       const SizedBox(width: 10),
-      Expanded(child: _StatTile(value: '$failed', label: 'Failed', color: JDS.red)),
+      Expanded(child: _StatTile(value: '$failed', label: 'Échoué', color: JDS.red)),
       const SizedBox(width: 10),
       Expanded(child: _StatTile(
         value: api.status.isOnline ? '✓' : '—',
-        label: 'System',
+        label: 'Système',
         color: api.status.isOnline ? JDS.green : JDS.textDim,
       )),
     ]);
@@ -525,10 +525,10 @@ class _MissionCard extends StatelessWidget {
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return 'à l\'instant';
+    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes}min';
+    if (diff.inHours < 24) return 'il y a ${diff.inHours}h';
+    return 'il y a ${diff.inDays}j';
   }
 }
 
@@ -611,14 +611,14 @@ class _InputCard extends StatelessWidget {
 
 // ── Suggestion chips ──────────────────────────────────────────
 const List<String> _suggestions = [
-  'Create a performance report',
-  'Research market trends',
-  'Analyze our key metrics',
-  'Write a summary of recent activity',
-  'Find cost optimization opportunities',
-  'Analyze a website',
-  'Create a Python script',
-  'Research competitors',
+  'Créer un rapport de performance',
+  'Analyser les tendances du marché',
+  'Analyser nos indicateurs clés',
+  'Rédiger un résumé de l\'activité récente',
+  'Identifier des opportunités d\'optimisation des coûts',
+  'Analyser un site web',
+  'Créer un script Python',
+  'Analyser les concurrents',
 ];
 
 class _SuggestionChips extends StatelessWidget {

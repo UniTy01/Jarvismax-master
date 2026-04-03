@@ -201,7 +201,7 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
             const BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),
               activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+              label: 'Accueil',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.rocket_launch_outlined),
@@ -223,17 +223,17 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
                 backgroundColor: JDS.amber,
                 child: const Icon(Icons.check_circle_rounded),
               ),
-              label: 'Approvals',
+              label: 'Approbations',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.history_rounded),
               activeIcon: Icon(Icons.history_rounded),
-              label: 'History',
+              label: 'Historique',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.settings_outlined),
               activeIcon: Icon(Icons.settings),
-              label: 'Settings',
+              label: 'Paramètres',
             ),
           ],
         ),
