@@ -216,28 +216,6 @@ Docker builds using the lock are now fully reproducible.
 
 ---
 
-## KL-009-ARCHIVE — requirements.txt not fully locked (RESOLVED, see above)
-
-**Root cause (was):** Critical packages used `>=X.Y,<X+1` upper-bound constraints (Cycle 18 improvement).
-This blocks accidental major-version bumps but does not pin transitive deps or patch versions.
-
-**Partial fix applied (Cycle 18):**
-- All critical packages now have upper bounds: `langchain>=0.3,<0.4`, `pydantic>=2.7,<3.0`, `fastapi>=0.111,<1.0`, etc.
-- `scripts/generate_requirements_lock.sh` script created — generates exact `==` lock from live Docker image.
-
-**Full fix requires:**
-```bash
-docker build -t jarvismax-lock . && \
-docker run --rm jarvismax-lock pip freeze > requirements.lock
-# Then update Dockerfile: pip install -r requirements.lock
-```
-
-**Workaround:** Use `requirements.lock` in CI (not yet committed — needs Docker build to generate).
-
-**Severity:** MODÉRÉ — upper bounds prevent the most dangerous scenario (major version bumps).
-
----
-
 ## KL-010 — DEFERRED: git binary present in runtime Docker image
 
 **Symptom:** `git` is installed in the production runtime image, increasing attack surface.

@@ -223,8 +223,9 @@ Week 4+: 3.2–3.5 based on user feedback + Track 4 monetization
 
 ```
 Week 1:  ✅ French UI labels + result copy/share button  (commit 1ecc357)
-Week 2:  ✅ Task type selector (16 business skills) + admin panel  (in progress)
-Week 3:  Mobile smoke test + first internal user / founder feedback
-Week 4:  Iterate on product UX based on real usage
+Week 2:  ✅ Task type selector (16 business skills) + admin panel  (commit 3f05256)
+Week 3:  ✅ APK debug build (commit b7a607b) — gradle.properties cross-platform fix,
+             SMOKE_TEST_RESULT.md checklist created. Device test pending.
+Week 4:  First internal user / founder feedback session + UX iteration
 Month 2: Consider web frontend (Next.js) if mobile-only limits reach
 ```

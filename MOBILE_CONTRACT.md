@@ -1,5 +1,5 @@
 # MOBILE_CONTRACT.md — Jarvis Max
-_Last updated: 2026-04-01 — Cycle 12: static audit complete, device test pending_
+_Last updated: 2026-04-03 — Cycle 19: approval migrated to v3, APK built, Cycle 18 mobile layer documented_
 
 Mobile app: Flutter (`jarvismax_app/`).
 Backend: FastAPI (`api/`).
@@ -8,7 +8,7 @@ Backend: FastAPI (`api/`).
 
 ## Current Mobile/Backend Path
 
-The mobile app uses **canonical v3 endpoints** for mission operations as of 2026-04-01.
+The mobile app uses **canonical v3 endpoints** for all operations as of Cycle 19.
 
 | Operation | Mobile calls | Backend handler |
 |-----------|-------------|----------------|
@@ -18,11 +18,13 @@ The mobile app uses **canonical v3 endpoints** for mission operations as of 2026
 | Auth/login | `POST /auth/token` | JWT auth ✅ |
 | Health | `GET /health` | API health ✅ |
 | Readiness | `GET /api/v3/system/readiness` | Canonical v3 ✅ |
-| Metrics | `GET /api/v3/metrics/...` | Canonical v3 ✅ |
-| Approve action | `POST /api/v2/tasks/{id}/approve` | Legacy v2 (still valid) |
-| Reject action | `POST /api/v2/tasks/{id}/reject` | Legacy v2 (still valid) |
+| Metrics | `GET /api/v3/metrics/summary` | Canonical v3 ✅ |
+| Approve action | `POST /api/v3/missions/{id}/approve` ✅ | Canonical v3 → bridge (3-step: legacy + MO + SQLite) |
+| Reject action | `POST /api/v3/missions/{id}/reject` ✅ | Canonical v3 → bridge (3-step: legacy + MO + SQLite) |
 
-The **canonical proven path** (`/api/v3/missions`) is now used by the mobile app, backend tests, and `verify_boot.sh`.
+The **canonical proven path** (`/api/v3/missions`) is now used for all mobile operations, backend tests, and `verify_boot.sh`.
+
+**Approval path migration (Cycle 19):** `approveAction()` and `rejectAction()` migrated from `/api/v2/tasks/{id}/approve|reject` to `/api/v3/missions/{id}/approve|reject`. The v3 path calls `bridge.approve_mission()` which does a proper 3-step sequence: legacy MissionSystem + MetaOrchestrator.resolve_approval() + canonical SQLite persist. The v2 path remains valid as a fallback.
 
 ---
 
@@ -45,14 +47,16 @@ The **canonical proven path** (`/api/v3/missions`) is now used by the mobile app
 
 ## Remaining Gaps
 
-### Approval/Reject endpoints (non-blocking)
-- `approveAction()` and `rejectAction()` still call `/api/v2/tasks/$id/approve|reject`
-- These legacy endpoints remain functional and are not on the ghost-DONE path
-- v3 equivalents exist (`/api/v3/missions/$id/approve|reject`) but migration is low priority
-
 ### Device smoke test pending
-- Mobile v3 migration has not been device-tested yet (requires live server + physical device or emulator)
-- See checklist below
+- APK debug build complete (Cycle 19): `app-debug.apk` ~90 MB, zero compile errors
+- Device test requires: Android device or emulator + running Jarvis server
+- See `SMOKE_TEST_RESULT.md` for the full test checklist (7 sections, 30+ test cases)
+
+### Cycle 18 mobile layer (fully shipped)
+- French-first UI: all tab labels, screens, buttons, errors in French ✅
+- Task type selector: 17 chips (Libre + 16 business skills), prefixes goal with `[skill_key]` ✅
+- Admin panel (`AdminPanelScreen`): hits `/api/v3/metrics/summary`, shows health, stats, cost, alerts ✅
+- Result copy button in mission detail: copies result to clipboard with "Résultat copié" snackbar ✅
 
 ---
 
@@ -85,21 +89,20 @@ The **canonical proven path** (`/api/v3/missions`) is now used by the mobile app
 
 ---
 
-## Device Smoke Test Checklist (one remaining external step)
+## Device Smoke Test (APK built — Cycle 19)
 
-Run on Android emulator or physical device against a live backend:
+**APK status:** Built and ready — `jarvismax_app/build/app/outputs/flutter-apk/app-debug.apk` (~90 MB).
+See `SMOKE_TEST_RESULT.md` for the complete 7-section checklist.
 
 **Setup:**
 ```bash
-# 1. Start server
-export ANTHROPIC_API_KEY=sk-ant-...
-export QDRANT_HOST=localhost QDRANT_PORT=6333
-python main.py &
+# 1. Start server (production or local)
+# Production: https://jarvis.jarvismaxapp.co.uk (default in app)
+# Local: set host + port in Paramètres → Serveur
 
-# 2. Get server IP (for Android emulator, use 10.0.2.2)
-# 3. Build app
-cd jarvismax_app
-flutter run --dart-define=API_BASE=http://10.0.2.2:8000
+# 2. Install APK
+adb install jarvismax_app/build/app/outputs/flutter-apk/app-debug.apk
+# Or transfer directly to device
 ```
 
 **Test sequence (in order):**

@@ -59,8 +59,10 @@ python main.py
 
 ### Mobile
 - **Mobile v3 migration complete** (Cycle 10): `api_service.dart` uses `/api/v3/missions`
-- **Remaining**: approval/reject still uses `/api/v2/tasks/` (functional, not a canonical v3 gap)
-- **Device smoke test not run**: requires real Android/iOS device or emulator with server running
+- **Approval/reject migrated to v3** (Cycle 19): `approveAction()` / `rejectAction()` now call `/api/v3/missions/{id}/approve|reject` (3-step canonical: legacy + MetaOrchestrator + SQLite persist)
+- **Cycle 18 mobile layer complete**: French-first UI, task type selector (16 skills), admin panel, result copy button
+- **APK debug build proven** (Cycle 19, commit b7a607b): `app-debug.apk` ~90 MB, zero compile errors
+- **Device smoke test pending**: APK built; install on Android device → follow SMOKE_TEST_RESULT.md checklist
 
 ### Model router
 - **Selector active**: `ModelSelector.select_for_role()` picks model by task class
@@ -229,7 +231,7 @@ The freeze declaration is evidence-based:
 | Model router | **Alpha** | Selector active; evidence loop wired but thin data |
 | Structured logs | **Beta** | mission_started / mission_completed / mission_failed |
 | Auth/security | **Beta** | JWT, 6 security rules, audit trail |
-| Mobile (Flutter) | **Alpha** | v3 migrated; device smoke test pending |
+| Mobile (Flutter) | **Beta** | v3 canonical; French UI; APK built; device smoke test pending |
 | Docker deployment | **Beta** | Live boot proven: COMPLETED in ~90s from cold start |
 | Tests | **Beta** | 95 unit + 437 integration pass; 0 product bugs; smoke tests need live server |
 | Memory (vector) | **Alpha** | Qdrant works; hybrid layering not activated |

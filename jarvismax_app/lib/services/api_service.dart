@@ -418,7 +418,8 @@ class ApiService extends ChangeNotifier {
 
   Future<ApiResult<void>> approveAction(String id) async {
     try {
-      await _post('/api/v2/tasks/$id/approve');
+      // v3 canonical: triggers MetaOrchestrator resumption + SQLite persist (3-step bridge)
+      await _post('/api/v3/missions/$id/approve');
       await _loadActions();
       return const ApiResult.success(null);
     } catch (e) {
@@ -429,7 +430,8 @@ class ApiService extends ChangeNotifier {
 
   Future<ApiResult<void>> rejectAction(String id, {String reason = ''}) async {
     try {
-      await _post('/api/v2/tasks/$id/reject', {'note': reason});
+      // v3 canonical: triggers MetaOrchestrator rejection + CANCELLED state + SQLite persist
+      await _post('/api/v3/missions/$id/reject', {'note': reason});
       await _loadActions();
       return const ApiResult.success(null);
     } catch (e) {

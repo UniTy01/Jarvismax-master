@@ -1,5 +1,5 @@
 # BACKEND CONTRACT LOCK 🔒
-_Locked: 2026-04-03 — Cycle 18. Backend frozen. All frontend/mobile/product work builds on this._
+_Locked: 2026-04-03 — Cycle 19 update: approval path migrated to v3 canonical. Backend frozen (Cycle 17). All frontend/mobile/product work builds on this._
 
 > This document is the single source of truth for the backend API contract.
 > Frontend, mobile, admin, and product work MUST use only what is listed here.
@@ -60,6 +60,8 @@ Content-Type: application/json
 {"goal": "Identify 3 business opportunities for AI consulting in France"}
 ```
 
+**Skill routing prefix (client-side convention):** Mobile task type selector prepends `[skill_key]` to the goal before submitting (e.g. `[market_research] Analyse le marché...`). The backend classifier routes to the matching business skill. Plain goals (no prefix) use free-routing. This is a client-side convention — the backend accepts any string.
+
 Response:
 ```json
 {
@@ -107,27 +109,47 @@ Response: same shape as single mission object above, wrapped in `{"data": {...}}
 
 ## 3. APPROVAL / REJECT
 
-> These use the v2 task path — functional and stable. Migration to v3 is deferred.
+> **Canonical path (v3) — use this.** Both mobile and product work must use v3.
+> The v2 task path remains active as a fallback but does not trigger MetaOrchestrator resumption.
 
-### Approve
+### Approve (canonical v3)
 ```
-POST /api/v2/tasks/{task_id}/approve
-```
-
-### Reject
-```
-POST /api/v2/tasks/{task_id}/reject
+POST /api/v3/missions/{mission_id}/approve
 Content-Type: application/json
 
 {"note": "Optional reason"}
 ```
 
-### List pending approvals
-```
-GET /api/v2/tasks
+3-step implementation: (1) legacy MissionSystem.approve(), (2) MetaOrchestrator.resolve_approval(), (3) canonical status WAITING_APPROVAL → RUNNING + SQLite persist.
+
+Response:
+```json
+{"ok": true, "data": {"ok": true, "mission_id": "...", "canonical_status": "RUNNING", "legacy_status": "approved"}}
 ```
 
-Response contains a list of pending actions with `status: "WAITING_APPROVAL"`.
+### Reject (canonical v3)
+```
+POST /api/v3/missions/{mission_id}/reject
+Content-Type: application/json
+
+{"note": "Optional reason"}
+```
+
+3-step implementation: (1) MissionSystem.reject(), (2) MetaOrchestrator.resolve_approval(granted=False), (3) canonical status → CANCELLED + SQLite persist.
+
+### List pending approvals (canonical v3)
+```
+GET /api/v3/approvals/pending
+```
+
+Response contains pending approval items with `risk_level`, `action`, `context`.
+
+### Legacy v2 approval (supported fallback, not canonical)
+```
+POST /api/v2/tasks/{task_id}/approve
+POST /api/v2/tasks/{task_id}/reject
+```
+These call `approval_queue.approve/reject()` only — single-step, no MetaOrchestrator resumption. Valid for backward compatibility but do NOT use in new product code.
 
 ---
 
