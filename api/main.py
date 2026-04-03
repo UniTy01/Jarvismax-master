@@ -95,8 +95,9 @@ _allowed_origins = (
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Jarvis-Token", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
 
 # ── Global access enforcement middleware (fail-closed) ────────
@@ -112,8 +113,15 @@ except ImportError as _enf_err:
 try:
     from api.security_headers import SecurityHeadersMiddleware
     app.add_middleware(SecurityHeadersMiddleware)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
+
+# ── Rate limiting middleware (sliding window per IP+path) ─────
+try:
+    from api.rate_limiter import RateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware)
+except ImportError as _rl_err:
+    log.error("rate_limiter_MISSING", err=str(_rl_err))
 
 # ── Router Registry ───────────────────────────────────────────
 try:
@@ -126,43 +134,43 @@ except Exception:
 try:
     from api.ws import router as ws_router
     app.include_router(ws_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur SSE Streaming ───────────────────────────
 try:
     from api.stream_router import router as stream_router
     app.include_router(stream_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Learning ─────────────────────────────────
 try:
     from api.routes.learning import router as learning_router
     app.include_router(learning_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Multimodal ───────────────────────────────
 try:
     from api.routes.multimodal import router as multimodal_router
     app.include_router(multimodal_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur RAG ──────────────────────────────────────
 try:
     from api.routes.rag import router as rag_router
     app.include_router(rag_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Agent Builder ───────────────────────────
 try:
     from api.routes.agent_builder import router as agent_builder_router
     app.include_router(agent_builder_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Phase 9 Mission Control ──────────────────
 try:
@@ -175,8 +183,8 @@ except Exception as _e:
 try:
     from api.routes.browser import router as browser_router
     app.include_router(browser_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Routing Diagnostics ──────────────────────
 try:
@@ -197,22 +205,22 @@ except Exception as _e:
 try:
     from api.routes.voice import router as voice_router
     app.include_router(voice_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Objective Engine ─────────────────────────
 try:
     from api.routes.objectives import router as objectives_router
     app.include_router(objectives_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import du routeur Self-Improvement Loop ────────────────────
 try:
     from api.routes.self_improvement import router as self_improvement_router
     app.include_router(self_improvement_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 try:
     from api.routes.dashboard import router as dashboard_router
@@ -230,16 +238,16 @@ except ImportError as _e:
 try:
     from api.routes.convergence import router as convergence_router
     app.include_router(convergence_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Import Performance Intelligence Router (v3) ───────────────
 try:
     from api.routes.performance import router as performance_router
     if performance_router:
         app.include_router(performance_router)
-except ImportError:
-    pass
+except Exception as _e:
+    log.warning("router_import_failed", err=str(_e)[:120])
 
 # ── Cockpit Router REMOVED — cockpit.html deleted ────────────
 

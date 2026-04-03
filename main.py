@@ -16,13 +16,7 @@ import structlog
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
-# Ensure PyJWT is available (required for token refresh)
-try:
-    import jwt
-except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "PyJWT", "-q"])
-    import jwt
+import jwt  # PyJWT — listed in requirements.txt; absent = packaging bug, not a runtime fix
 
 
 # ── Logging ───────────────────────────────────────────────────

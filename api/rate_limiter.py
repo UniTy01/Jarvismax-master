@@ -156,3 +156,70 @@ class RateLimiter:
             except Exception:
                 pass  # Fail-open: fall back to in-memory
         return self._memory_limiter.allow(client_ip, path)
+
+
+# ═══════════════════════════════════════════════════════════════
+# STARLETTE MIDDLEWARE WRAPPER
+# ═══════════════════════════════════════════════════════════════
+
+# Paths that bypass rate limiting (health probes, static assets)
+_RATE_LIMIT_EXEMPT_PREFIXES = ("/health", "/readiness", "/static", "/index.html", "/favicon")
+
+_global_limiter = RateLimiter()
+
+
+class RateLimitMiddleware:
+    """
+    ASGI middleware that enforces sliding-window rate limiting per IP+path.
+
+    Exempt paths: health, readiness, static assets.
+    Returns HTTP 429 with Retry-After header on violation.
+    Fail-open: if the limiter raises unexpectedly, the request passes through.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+
+        # Exempt health/static paths
+        if any(path.startswith(p) for p in _RATE_LIMIT_EXEMPT_PREFIXES):
+            await self.app(scope, receive, send)
+            return
+
+        # Extract client IP from X-Forwarded-For or direct connection
+        client_ip = "unknown"
+        headers = dict(scope.get("headers", []))
+        fwd = headers.get(b"x-forwarded-for", b"").decode("latin-1").strip()
+        if fwd:
+            client_ip = fwd.split(",")[0].strip()
+        elif scope.get("client"):
+            client_ip = scope["client"][0]
+
+        try:
+            allowed = _global_limiter.allow(client_ip, path)
+        except Exception:
+            allowed = True  # Fail-open
+
+        if not allowed:
+            _, window = _get_limit(path)
+            body = b'{"detail":"Too Many Requests","retry_after":' + str(window).encode() + b"}"
+            await send({
+                "type": "http.response.start",
+                "status": 429,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"retry-after", str(window).encode()),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": body})
+            logger.warning("rate_limit_exceeded", extra={"client_ip": client_ip, "path": path})
+            return
+
+        await self.app(scope, receive, send)
