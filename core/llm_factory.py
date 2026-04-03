@@ -444,21 +444,24 @@ class LLMFactory:
 
         # ── ModelSelector: use evidence-driven model when catalog is populated ──
         # Falls back to model_map if selector fails or has no catalog data.
+        # Set MODEL_SELECTOR_ENABLED=false in .env to always use model_map values.
         _selector_model: str | None = None
         _selector_reason: str = ""
         _selector_is_fallback: bool = True
         _selector_score: float = 0.0
-        try:
-            from core.model_intelligence.selector import get_model_selector
-            sel = get_model_selector()
-            result = sel.select_for_role(role, budget_mode="normal")
-            if result and result.model_id and not result.is_fallback:
-                _selector_model = result.model_id
-                _selector_reason = result.rationale or ""
-                _selector_is_fallback = False
-                _selector_score = round(result.final_score, 3)
-        except Exception:
-            pass  # Selector unavailable → use model_map default
+        _selector_enabled = os.getenv("MODEL_SELECTOR_ENABLED", "true").lower() not in ("false", "0", "no")
+        if _selector_enabled:
+            try:
+                from core.model_intelligence.selector import get_model_selector
+                sel = get_model_selector()
+                result = sel.select_for_role(role, budget_mode="normal")
+                if result and result.model_id and not result.is_fallback:
+                    _selector_model = result.model_id
+                    _selector_reason = result.rationale or ""
+                    _selector_is_fallback = False
+                    _selector_score = round(result.final_score, 3)
+            except Exception:
+                pass  # Selector unavailable → use model_map default
 
         if _selector_model and _selector_model != model_id:
             log.info(
