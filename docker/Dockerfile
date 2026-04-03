@@ -58,6 +58,10 @@ RUN pip install --no-cache-dir PyJWT>=2.0 mcp-server-fetch mcp-server-sqlite
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')" \
     2>/dev/null || echo "sentence-transformers not installed, skipping model cache"
 
+# Entrypoint: creates runtime data dirs that are hidden by the ./:/app bind-mount
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Non-root user
 RUN useradd -m jarvis && chown -R jarvis:jarvis /app
 USER jarvis
@@ -67,4 +71,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "main.py"]

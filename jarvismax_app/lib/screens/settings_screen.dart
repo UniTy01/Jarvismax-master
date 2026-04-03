@@ -79,13 +79,13 @@ class SettingsScreen extends StatelessWidget {
                   Icon(
                     isAdmin ? Icons.shield_outlined : Icons.person_outline,
                     size: 18,
-                    color: isAdmin ? JDS.cyan : JDS.textSecondary,
+                    color: isAdmin ? JDS.blue : JDS.textSecondary,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     isAdmin ? 'Administrateur' : 'Utilisateur',
                     style: TextStyle(
-                      color: isAdmin ? JDS.cyan : JDS.textSecondary,
+                      color: isAdmin ? JDS.blue : JDS.textSecondary,
                       fontSize: 14, fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -93,14 +93,14 @@ class SettingsScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: (isAdmin ? JDS.cyan : JDS.textDim).withOpacity(0.12),
+                      color: (isAdmin ? JDS.blue : JDS.textDim).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       isAdmin ? 'ADMIN' : 'USER',
                       style: TextStyle(
                         fontSize: 10, fontWeight: FontWeight.w700,
-                        color: isAdmin ? JDS.cyan : JDS.textDim,
+                        color: isAdmin ? JDS.blue : JDS.textDim,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -214,11 +214,9 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
-
     if (confirmed != true) return;
     await SessionManager.instance.logout();
     if (ctx.mounted) {
-      // Force full restart
       Navigator.of(ctx).popUntil((route) => route.isFirst);
       (ctx as Element).markNeedsBuild();
     }
@@ -336,3 +334,4 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
+                             
