@@ -219,13 +219,32 @@ Week 4+: 3.2–3.5 based on user feedback + Track 4 monetization
 4. **Admin view** — model cost, recent missions summary, system health (for operator)
 5. **Onboarding** — first-time user explanation (what can Jarvis do?)
 
-### Sequencing (realistic, post-Cycle 18)
+### Sequencing (realistic, post-Cycle 19)
 
 ```
 Week 1:  ✅ French UI labels + result copy/share button  (commit 1ecc357)
 Week 2:  ✅ Task type selector (16 business skills) + admin panel  (commit 3f05256)
-Week 3:  ✅ APK debug build (commit b7a607b) — gradle.properties cross-platform fix,
-             SMOKE_TEST_RESULT.md checklist created. Device test pending.
-Week 4:  First internal user / founder feedback session + UX iteration
-Month 2: Consider web frontend (Next.js) if mobile-only limits reach
+Week 3:  ✅ APK debug build + backend contract lock + approval v3 migration  (commits b7a607b, 953cc14)
+Week 3+: ✅ Doc alignment (README/RUNBOOK) + admin role gating in mobile  (commit — this cycle)
+Week 4:  📲 Install APK on device → run SMOKE_TEST_RESULT.md checklist
+Week 4:  👤 First internal user / founder feedback session
+Week 5+: Iterate on UX based on real usage (onboarding, result sharing)
+Month 2: Multi-user auth (Track 3.1) + VPS deployment + first paying customer
 ```
+
+---
+
+## CYCLE 20 CANDIDATE TASKS (next 10 concrete tasks)
+
+Priority order — do not deviate:
+
+1. **Install APK on Android device** — `adb install jarvismax_app/build/app/outputs/flutter-apk/app-debug.apk`
+2. **Run SMOKE_TEST_RESULT.md checklist** — fill in all ⬜ boxes (7 sections, auth → admin panel → WebSocket)
+3. **Sign off smoke test** — record overall result (PASS/FAIL/PARTIAL) + device info
+4. **Submit first real business mission** — e.g. `[market_research] Analyse le marché SaaS RH en France`
+5. **Record UX friction** — document: what was confusing, what was slow, what was missing
+6. **Build onboarding screen** — "Que peut faire Jarvis ?" (5 business skill examples, skip button)
+7. **Add result share sheet** — Flutter `Share.shareXFiles()` or `Share.share(result)` on detail screen
+8. **VPS deployment** — `docker compose -f docker-compose.prod.yml up` on Hetzner/DigitalOcean with `JARVIS_PRODUCTION=1`
+9. **Multi-user auth scaffold** — user table + per-user JWT (Track 3.1, enables second tester)
+10. **Founder-facing landing page** — single HTML page describing the product, with install/signup link

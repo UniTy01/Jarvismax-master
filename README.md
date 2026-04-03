@@ -57,7 +57,7 @@ kernel/               → Capability registry, policy, memory interfaces, kernel
 agents/               → 9 agents + crew parallèle + kernel bridge
 security/             → SecurityLayer (6 active rules) + audit trail + policy ruleset
 business/             → Business orchestration layer (assisted, not autonomous)
-tests/                → 37 focused regression tests (green); smoke tests require --run-infra-tests
+tests/                → 5700+ passing (Cycle 18 Docker run); 95 CI-gated unit tests; smoke tests require --run-infra-tests
 ```
 
 > **Maturity note:** This is an **internal beta** platform. The core orchestration,
@@ -109,8 +109,8 @@ For MEDIUM/HIGH risk actions, JarvisMax requests approval via the API:
 - `POST /api/v3/missions/{mission_id}/approve` → execute
 - `POST /api/v3/missions/{mission_id}/reject` → cancel
 
-> Note: `/api/v2/tasks/{id}/approve` listed in older docs does not exist.
-> Use the mission-level approval endpoints above.
+> Note: `/api/v2/tasks/{id}/approve` is a **legacy path** (still active, single-step only).
+> Canonical: use `/api/v3/missions/{id}/approve` (3-step: MissionSystem + MetaOrchestrator + SQLite persist).
 
 ---
 
@@ -136,7 +136,7 @@ ScoutResearch and ForgeBuilder are proven active; LensReviewer has intermittent 
 | ScoutResearch    | Recherche et synthèse       | ✅ Proven active |
 | MapPlanner       | Plans et roadmaps           | Active |
 | ForgeBuilder     | Code, scripts, fichiers     | ✅ Proven active |
-| LensReviewer     | Contrôle qualité            | ⚠️ Intermittent (KL-005) |
+| LensReviewer     | Contrôle qualité            | ✅ Resolved (KL-005 — priority waves wired, Cycle 11) |
 | VaultMemory      | Mémoire long terme          | Active (requires Qdrant) |
 | ShadowAdvisor    | Perspectives alternatives   | Active |
 | PulseOps         | Préparation d'actions       | Active |

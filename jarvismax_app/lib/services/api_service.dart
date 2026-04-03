@@ -8,6 +8,7 @@ import '../models/mission.dart';
 import '../models/action_model.dart';
 import '../models/system_status.dart';
 import 'websocket_service.dart';
+import 'session_manager.dart';
 
 class ApiResult<T> {
   final T? data;
@@ -31,6 +32,10 @@ class ApiService extends ChangeNotifier {
 
   String _jwtToken = '';
   String get jwtToken => _jwtToken;
+
+  // Admin role: true when logged in via admin credentials (loginMode == 'admin')
+  bool _isAdmin = false;
+  bool get isAdmin => _isAdmin;
 
   List<Mission>     _missions = [];
   List<ActionModel> _actions  = [];
@@ -129,6 +134,11 @@ class ApiService extends ChangeNotifier {
     }
     // NOTE: No auto-login with hardcoded credentials.
     // If JWT is absent, user must configure credentials via Settings.
+    // Restore admin role from persisted session (loginMode == 'admin').
+    try {
+      final session = await SessionManager.instance.restoreSession();
+      if (session != null) _isAdmin = session.loginMode == 'admin';
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -162,14 +172,19 @@ class ApiService extends ChangeNotifier {
     }
   }
 
-  /// Login with username/password credentials.
+  /// Login with username/password credentials (admin path).
   Future<bool> loginWithCredentials(String username, String password) async {
     final result = await login(username, password);
+    if (result.ok) {
+      _isAdmin = true;  // credential login = admin role
+      notifyListeners();
+    }
     return result.ok;
   }
 
   Future<void> clearJwt() async {
     _jwtToken = '';
+    _isAdmin = false;
     _tokenRefreshTimer?.cancel();
     _savedUsername = '';
     _savedPassword = '';

@@ -20,9 +20,10 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final api = context.watch<ApiService>();
-    final ws = context.watch<WebSocketService>();
+    final api    = context.watch<ApiService>();
+    final ws     = context.watch<WebSocketService>();
     final config = context.watch<ApiConfig>();
+    final isAdmin = api.isAdmin;
 
     return Scaffold(
       body: SafeArea(
@@ -71,6 +72,42 @@ class SettingsScreen extends StatelessWidget {
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: JCard(child: Column(children: [
+              // Role indicator
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(children: [
+                  Icon(
+                    isAdmin ? Icons.shield_outlined : Icons.person_outline,
+                    size: 18,
+                    color: isAdmin ? JDS.cyan : JDS.textSecondary,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    isAdmin ? 'Administrateur' : 'Utilisateur',
+                    style: TextStyle(
+                      color: isAdmin ? JDS.cyan : JDS.textSecondary,
+                      fontSize: 14, fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (isAdmin ? JDS.cyan : JDS.textDim).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      isAdmin ? 'ADMIN' : 'USER',
+                      style: TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w700,
+                        color: isAdmin ? JDS.cyan : JDS.textDim,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+              const Divider(height: 12),
               _SettingsItem(
                 icon: Icons.logout_rounded,
                 label: 'Se déconnecter',
@@ -80,57 +117,59 @@ class SettingsScreen extends StatelessWidget {
             ])),
           )),
 
-          // ── Advanced ──
-          SliverToBoxAdapter(child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-            child: JSectionHeader(title: 'Avancé'),
-          )),
-          SliverToBoxAdapter(child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-            child: JCard(padding: EdgeInsets.zero, child: Column(children: [
-              _NavItem(
-                icon: Icons.dashboard_outlined,
-                label: 'Panneau Admin',
-                subtitle: 'Métriques, coût modèles, alertes',
-                onTap: () => _push(context, const AdminPanelScreen()),
-              ),
-              const Divider(height: 1, indent: 52),
-              _NavItem(
-                icon: Icons.extension_rounded,
-                label: 'Modules',
-                subtitle: 'Agents, compétences, connecteurs, MCP',
-                onTap: () => _push(context, const ModulesScreen()),
-              ),
-              const Divider(height: 1, indent: 52),
-              _NavItem(
-                icon: Icons.memory_rounded,
-                label: 'Tableau de bord',
-                subtitle: 'Vue système et diagnostics',
-                onTap: () => _push(context, const AIOSDashboardScreen()),
-              ),
-              const Divider(height: 1, indent: 52),
-              _NavItem(
-                icon: Icons.category_rounded,
-                label: 'Capacités',
-                subtitle: 'Outils disponibles et routage',
-                onTap: () => _push(context, const CapabilitiesScreen()),
-              ),
-              const Divider(height: 1, indent: 52),
-              _NavItem(
-                icon: Icons.auto_fix_high_rounded,
-                label: 'Auto-amélioration',
-                subtitle: 'Patchs autonomes et apprentissage',
-                onTap: () => _push(context, const SelfImprovementScreen()),
-              ),
-              const Divider(height: 1, indent: 52),
-              _NavItem(
-                icon: Icons.monitor_heart_outlined,
-                label: 'Santé système',
-                subtitle: 'Métriques, disponibilité, ressources',
-                onTap: () => _push(context, const HealthScreen()),
-              ),
-            ])),
-          )),
+          // ── Advanced (admin only) ──
+          if (isAdmin) ...[
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: JSectionHeader(title: 'Avancé'),
+            )),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: JCard(padding: EdgeInsets.zero, child: Column(children: [
+                _NavItem(
+                  icon: Icons.dashboard_outlined,
+                  label: 'Panneau Admin',
+                  subtitle: 'Métriques, coût modèles, alertes',
+                  onTap: () => _push(context, const AdminPanelScreen()),
+                ),
+                const Divider(height: 1, indent: 52),
+                _NavItem(
+                  icon: Icons.extension_rounded,
+                  label: 'Modules',
+                  subtitle: 'Agents, compétences, connecteurs, MCP',
+                  onTap: () => _push(context, const ModulesScreen()),
+                ),
+                const Divider(height: 1, indent: 52),
+                _NavItem(
+                  icon: Icons.memory_rounded,
+                  label: 'Tableau de bord',
+                  subtitle: 'Vue système et diagnostics',
+                  onTap: () => _push(context, const AIOSDashboardScreen()),
+                ),
+                const Divider(height: 1, indent: 52),
+                _NavItem(
+                  icon: Icons.category_rounded,
+                  label: 'Capacités',
+                  subtitle: 'Outils disponibles et routage',
+                  onTap: () => _push(context, const CapabilitiesScreen()),
+                ),
+                const Divider(height: 1, indent: 52),
+                _NavItem(
+                  icon: Icons.auto_fix_high_rounded,
+                  label: 'Auto-amélioration',
+                  subtitle: 'Patchs autonomes et apprentissage',
+                  onTap: () => _push(context, const SelfImprovementScreen()),
+                ),
+                const Divider(height: 1, indent: 52),
+                _NavItem(
+                  icon: Icons.monitor_heart_outlined,
+                  label: 'Santé système',
+                  subtitle: 'Métriques, disponibilité, ressources',
+                  onTap: () => _push(context, const HealthScreen()),
+                ),
+              ])),
+            )),
+          ],
 
           // ── Version ──
           SliverToBoxAdapter(child: Padding(

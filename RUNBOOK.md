@@ -1,7 +1,7 @@
 # RUNBOOK — Jarvis Max
 
 **Last updated:** 2026-04-01
-**Status:** Internal Alpha — E2E proven on canonical path (verify_boot.sh passes)
+**Status:** Internal Beta — Backend frozen (Cycle 17). Docker live boot proven. APK built. Canonical path verified (verify_boot.sh passes).
 
 ---
 
@@ -260,7 +260,8 @@ The mission is submitted asynchronously. Poll for status:
 curl http://localhost:8000/api/v3/missions/{mission_id}
 ```
 
-Wait for `status` to reach `DONE` or `FAILED`. The `result` field will contain the LLM output.
+Wait for `status` to reach `COMPLETED` or `FAILED`. The `result` field will contain the LLM output.
+Note: the mobile app normalizes `COMPLETED` → `DONE` for display, but the raw API always returns `COMPLETED`.
 
 **With API token authentication:**
 ```bash
