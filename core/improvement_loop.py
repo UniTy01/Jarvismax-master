@@ -264,31 +264,38 @@ def _si_enabled() -> bool:
 class RegressionGuard:
     def __init__(self, repo_root: Path, docker_image: str = "jarvismax-jarvis:latest",
                  network: str = "jarvismax_jarvis_net"):
-        # ── SI safety gate ──────────────────────────────────────────
-        # RegressionGuard requires Docker socket access to spin test containers.
-        # Disabled by default — must be explicitly enabled via JARVIS_ENABLE_SI=1.
-        if not _si_enabled():
-            raise RuntimeError(
-                "RegressionGuard is disabled. "
-                "Set JARVIS_ENABLE_SI=1 to enable self-improvement. "
-                "WARNING: this requires /var/run/docker.sock mounted into the container "
-                "and grants container-level Docker privilege to the process."
-            )
-        import os as _os
-        if not _os.path.exists(_DOCKER_SOCKET):
-            raise RuntimeError(
-                f"RegressionGuard requires Docker socket at {_DOCKER_SOCKET} but it is not present. "
-                "Mount the Docker socket or disable SI."
-            )
         self.repo_root = repo_root
         self.docker_image = docker_image
         self.network = network
-        log.info("regression_guard.enabled",
-                 docker_image=docker_image,
-                 socket=_DOCKER_SOCKET,
-                 warning="Docker socket is mounted — container-level privilege is active")
+        # Log warning at construction time if SI is not enabled or socket missing.
+        # The hard raise happens in run_tests() — evaluate() is pure logic and safe to call always.
+        if not _si_enabled():
+            log.warning("regression_guard.disabled",
+                        reason="JARVIS_ENABLE_SI not set",
+                        action="run_tests() will raise if called without enabling SI")
+        elif not os.path.exists(_DOCKER_SOCKET):
+            log.warning("regression_guard.no_socket",
+                        socket=_DOCKER_SOCKET,
+                        action="run_tests() will raise if called without Docker socket")
+        else:
+            log.info("regression_guard.ready",
+                     docker_image=docker_image,
+                     socket=_DOCKER_SOCKET,
+                     warning="Docker socket is mounted — container-level privilege is active")
 
     def run_tests(self, test_path: str, timeout: int = 120) -> dict:
+        # ── SI safety gate — enforced at execution time, not construction ──
+        if not _si_enabled():
+            raise RuntimeError(
+                "RegressionGuard.run_tests() is disabled. "
+                "Set JARVIS_ENABLE_SI=1 to enable self-improvement. "
+                "WARNING: this requires /var/run/docker.sock mounted and grants Docker privilege."
+            )
+        if not os.path.exists(_DOCKER_SOCKET):
+            raise RuntimeError(
+                f"RegressionGuard.run_tests() requires Docker socket at {_DOCKER_SOCKET}. "
+                "Mount the Docker socket or disable SI."
+            )
         cmd = ["docker", "run", "--rm", "-v", f"{self.repo_root}:/app",
                "-w", "/app", "--network", self.network, "-e", "PYTHONPATH=/app",
                self.docker_image, "python", "-m", "pytest", test_path, "--tb=no", "-q"]
@@ -466,7 +473,10 @@ class ImprovementLoop:
         if errors:
             return self._blocked(spec, f"Validation: {'; '.join(errors)}")
 
-        baseline = self.guard.run_tests(spec.regression_tests)
+        try:
+            baseline = self.guard.run_tests(spec.regression_tests)
+        except RuntimeError as e:
+            return self._error(spec, {}, f"Baseline test execution failed: {e}")
         if not baseline.get("passed") and not baseline.get("failed"):
             return self._blocked(spec, "Baseline returned no results")
 
