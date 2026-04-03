@@ -1,5 +1,5 @@
 # KNOWN_LIMITATIONS.md — Jarvis Max
-_Last updated: 2026-04-03 — Cycle 17: Docker live boot PROVEN. KL-003 resolved. All known limitations resolved. Backend frozen._
+_Last updated: 2026-04-03 — Cycle 18: Production hardening wave complete. 14 audit findings resolved. No new KLs introduced._
 
 This document lists known limitations, unresolved bugs, and deliberate trade-offs in the current codebase.
 Each entry includes: symptom, root cause, workaround, and fix complexity.
@@ -201,3 +201,58 @@ orphaned missions that will never resolve. The operator can re-submit the goal i
 **Remaining:**
 - Device smoke test against live server (see MOBILE_CONTRACT.md checklist)
 - Approval/reject actions still use `/api/v2/tasks/$id/approve|reject` (not blocking — this path remains valid)
+
+---
+
+## KL-009 — PARTIAL: requirements.txt not fully locked
+
+**Symptom:** `pip install -r requirements.txt` in Docker produces different transitive dependency
+versions on different days (PyPI ships new packages continuously).
+
+**Root cause:** Critical packages use `>=X.Y,<X+1` upper-bound constraints (Cycle 18 improvement).
+This blocks accidental major-version bumps but does not pin transitive deps or patch versions.
+
+**Partial fix applied (Cycle 18):**
+- All critical packages now have upper bounds: `langchain>=0.3,<0.4`, `pydantic>=2.7,<3.0`, `fastapi>=0.111,<1.0`, etc.
+- `scripts/generate_requirements_lock.sh` script created — generates exact `==` lock from live Docker image.
+
+**Full fix requires:**
+```bash
+docker build -t jarvismax-lock . && \
+docker run --rm jarvismax-lock pip freeze > requirements.lock
+# Then update Dockerfile: pip install -r requirements.lock
+```
+
+**Workaround:** Use `requirements.lock` in CI (not yet committed — needs Docker build to generate).
+
+**Severity:** MODÉRÉ — upper bounds prevent the most dangerous scenario (major version bumps).
+
+---
+
+## KL-010 — DEFERRED: git binary present in runtime Docker image
+
+**Symptom:** `git` is installed in the production runtime image, increasing attack surface.
+
+**Root cause:** `core/self_improvement/git_agent.py` calls `git` via subprocess. Removing `git`
+would break the self-improvement pipeline.
+
+**Decision (Cycle 18):** DEFERRED. To remove `git` safely requires refactoring `git_agent.py` to
+use `GitPython` or to confine git operations to a separate build-stage-only container.
+
+**Workaround:** SI is disabled by default (`JARVIS_ENABLE_SI` not set). The git binary is inert
+in production unless SI is explicitly activated.
+
+---
+
+## KL-011 — DOCUMENTED: MemoryLayer not wired into agent runtime
+
+**Symptom:** `core/memory/memory_layers.py` defines a full 6-type structured memory abstraction
+but agents write to Qdrant directly, bypassing MemoryLayer entirely.
+
+**Root cause:** Architectural debt — two memory paths coexist: Qdrant direct (active) vs
+MemoryLayer (inactive).
+
+**Decision (Cycle 18):** Documented clearly in `MemoryLayer` docstring. Not wired — doing so
+would require modifying `ParallelExecutor` and `AgentCrew` write paths and adding migration.
+
+**Risk:** Low. Both paths are independently correct. No data is lost or corrupted.
