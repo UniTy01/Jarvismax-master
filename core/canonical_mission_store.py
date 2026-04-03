@@ -82,7 +82,18 @@ CREATE TABLE IF NOT EXISTS canonical_missions (
     created_at    REAL NOT NULL,
     updated_at    REAL NOT NULL,
     context_json  TEXT NOT NULL
-);
+)
+"""
+
+# Indexes run as separate statements — sqlite3.execute() only accepts one statement at a time.
+_CREATE_INDEX_CREATED_AT = """
+CREATE INDEX IF NOT EXISTS idx_canonical_missions_created_at
+    ON canonical_missions(created_at DESC)
+"""
+
+_CREATE_INDEX_STATUS = """
+CREATE INDEX IF NOT EXISTS idx_canonical_missions_status
+    ON canonical_missions(status)
 """
 
 _UPSERT = """
@@ -135,6 +146,8 @@ class CanonicalMissionStore:
     def _init_db(self) -> None:
         with self._connect() as conn:
             conn.execute(_CREATE_TABLE)
+            conn.execute(_CREATE_INDEX_CREATED_AT)
+            conn.execute(_CREATE_INDEX_STATUS)
 
     # ── Write ───────────────────────────────────────────────────────────────
 

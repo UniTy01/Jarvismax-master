@@ -4,6 +4,7 @@ Single source for all /api/v2/task, /api/v2/tasks, /api/v2/missions, /api/v2/age
 """
 from __future__ import annotations
 
+import asyncio
 import json as _json
 import os
 import time
@@ -29,8 +30,12 @@ logger = log
 
 router = APIRouter(tags=["missions"])
 
-# Anti-duplicate guard: prevents the same mission from being dispatched twice concurrently
+# Anti-duplicate guard: prevents the same mission from being dispatched twice concurrently.
+# asyncio.Lock makes the check-and-add atomic within a single-worker asyncio event loop.
+# NOTE: does NOT protect across multiple uvicorn workers (--workers > 1).
+# For multi-worker deployments use a Redis-backed set instead.
 _running_missions: set[str] = set()
+_running_missions_lock = asyncio.Lock()
 
 
 # ── Pydantic models ───────────────────────────────────────────
@@ -85,15 +90,16 @@ async def submit_task(
     ms      = _get_mission_system()
     result  = ms.submit(req.input)
 
-    # ── Anti-duplicate execution guard ────────────────────────────
-    if result.mission_id in _running_missions:
-        log.warning("mission_already_running", mission_id=result.mission_id)
-        return {"ok": True, "data": {
-            "task_id": result.mission_id, "mission_id": result.mission_id,
-            "status": "already_running", "mode": req.mode,
-            "created_at": result.created_at,
-        }}
-    _running_missions.add(result.mission_id)
+    # ── Anti-duplicate execution guard (atomic check-and-add) ────────
+    async with _running_missions_lock:
+        if result.mission_id in _running_missions:
+            log.warning("mission_already_running", mission_id=result.mission_id)
+            return {"ok": True, "data": {
+                "task_id": result.mission_id, "mission_id": result.mission_id,
+                "status": "already_running", "mode": req.mode,
+                "created_at": result.created_at,
+            }}
+        _running_missions.add(result.mission_id)
 
     async def _run_mission():
         _mission_start = time.time()
