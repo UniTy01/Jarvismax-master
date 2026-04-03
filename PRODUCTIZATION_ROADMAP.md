@@ -194,10 +194,10 @@ Week 4+: 3.2–3.5 based on user feedback + Track 4 monetization
 | Mission list + status | ✅ Done | — |
 | Mission detail + result display | ✅ Done | — |
 | Approval card | ✅ Done | — |
-| **Task type selector** (choose skill category) | ❌ Missing | HIGH |
-| **Result export** (copy / share / PDF) | ❌ Missing | HIGH |
-| **Admin panel** (metrics, model cost, system health) | ❌ Missing | MEDIUM |
-| **French-first UI** (all labels in French) | ⚠️ Partial | MEDIUM |
+| **Task type selector** (choose skill category) | ✅ Done (Cycle 18 mobile) | HIGH |
+| **Result export** (copy / share / PDF) | ✅ Done (Cycle 18 mobile) | HIGH |
+| **Admin panel** (metrics, model cost, system health) | ✅ Done (Cycle 18 mobile) | MEDIUM |
+| **French-first UI** (all labels in French) | ✅ Done (Cycle 18 mobile) | MEDIUM |
 
 ### Backend capabilities already sufficient
 
@@ -222,9 +222,9 @@ Week 4+: 3.2–3.5 based on user feedback + Track 4 monetization
 ### Sequencing (realistic, post-Cycle 18)
 
 ```
-Week 1:  French UI labels + result copy/share button + mobile smoke test
-Week 2:  Task type selector + admin panel (simple metrics view)
-Week 3:  Device test + first internal user / founder feedback
+Week 1:  ✅ French UI labels + result copy/share button  (commit 1ecc357)
+Week 2:  ✅ Task type selector (16 business skills) + admin panel  (in progress)
+Week 3:  Mobile smoke test + first internal user / founder feedback
 Week 4:  Iterate on product UX based on real usage
 Month 2: Consider web frontend (Next.js) if mobile-only limits reach
 ```

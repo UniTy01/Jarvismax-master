@@ -15,12 +15,34 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// ── Task type definitions ─────────────────────────────────────────────────────
+// Maps backend skill key → French label + icon + composer hint
+const List<Map<String, dynamic>> _kTaskTypes = [
+  {'key': 'libre',                  'label': 'Libre',               'icon': 0xe3c9, 'hint': 'Que voulez-vous faire ? Recherche, analyse, code, automatisation…'},
+  {'key': 'market_research',        'label': 'Recherche marché',    'icon': 0xe8b6, 'hint': 'Ex : Analysez le marché des outils IA pour PME en France…'},
+  {'key': 'competitor_analysis',    'label': 'Concurrents',         'icon': 0xe14f, 'hint': 'Ex : Analysez les concurrents de [votre produit/service]…'},
+  {'key': 'positioning',            'label': 'Positionnement',      'icon': 0xe1e0, 'hint': 'Ex : Définissez le positionnement de [votre offre] face au marché…'},
+  {'key': 'pricing_strategy',       'label': 'Stratégie prix',      'icon': 0xe263, 'hint': 'Ex : Proposez une grille tarifaire pour [votre produit]…'},
+  {'key': 'growth_plan',            'label': 'Plan de croissance',  'icon': 0xe6de, 'hint': 'Ex : Créez un plan de croissance sur 6 mois pour [votre entreprise]…'},
+  {'key': 'acquisition_strategy',   'label': 'Acquisition',         'icon': 0xe7fe, 'hint': 'Ex : Définissez une stratégie d\'acquisition pour [cible client]…'},
+  {'key': 'value_proposition',      'label': 'Valeur client',       'icon': 0xe838, 'hint': 'Ex : Formulez la proposition de valeur de [votre offre]…'},
+  {'key': 'offer_design',           'label': 'Design offre',        'icon': 0xe19c, 'hint': 'Ex : Concevez une offre commerciale pour [votre marché cible]…'},
+  {'key': 'customer_persona',       'label': 'Persona client',      'icon': 0xe7fd, 'hint': 'Ex : Créez des personas clients pour [votre produit]…'},
+  {'key': 'copywriting',            'label': 'Copywriting',         'icon': 0xe22b, 'hint': 'Ex : Rédigez un texte de vente percutant pour [votre offre]…'},
+  {'key': 'funnel_design',          'label': 'Funnel',              'icon': 0xef4f, 'hint': 'Ex : Concevez un funnel de conversion pour [votre offre]…'},
+  {'key': 'landing_structure',      'label': 'Landing page',        'icon': 0xe051, 'hint': 'Ex : Structurez une landing page pour [votre produit]…'},
+  {'key': 'spec_writing',           'label': 'Rédaction spec',      'icon': 0xe873, 'hint': 'Ex : Rédigez les spécifications de [votre fonctionnalité]…'},
+  {'key': 'automation_opportunity', 'label': 'Automatisation',      'icon': 0xe553, 'hint': 'Ex : Identifiez les opportunités d\'automatisation dans [votre activité]…'},
+  {'key': 'strategy_reasoning',     'label': 'Conseil stratégique', 'icon': 0xe90f, 'hint': 'Ex : Donnez un conseil stratégique sur [ma situation actuelle]…'},
+];
+
 class _HomeScreenState extends State<HomeScreen> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
   bool _sending = false;
   String? _feedback;
   bool _feedbackIsError = false;
+  String _selectedTaskKey = 'libre';
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +109,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: _ApprovalAlert(count: api.pendingActions.length),
                 )),
 
+              // ── Task Type Selector ──
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+                child: _TaskTypeBar(
+                  selected: _selectedTaskKey,
+                  onSelect: (key) => setState(() => _selectedTaskKey = key),
+                ),
+              )),
+
               // ── Composer ──
               SliverToBoxAdapter(child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -95,6 +126,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   focus: _focus,
                   sending: _sending,
                   onSend: _send,
+                  hintText: _currentHint,
+                  selectedLabel: _selectedTaskKey == 'libre' ? null : _currentLabel,
+                  onClearType: () => setState(() => _selectedTaskKey = 'libre'),
                 ),
               )),
 
@@ -173,6 +207,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Map<String, dynamic> get _currentTypeData =>
+      _kTaskTypes.firstWhere((t) => t['key'] == _selectedTaskKey,
+          orElse: () => _kTaskTypes.first);
+
+  String get _currentHint => _currentTypeData['hint'] as String;
+  String get _currentLabel => _currentTypeData['label'] as String;
+
   String _dateString() {
     final now = DateTime.now();
     final weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -193,11 +234,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
+    // Prefix the domain skill key so the backend can route to the right skill
+    final goal = (_selectedTaskKey != 'libre')
+        ? '[$_selectedTaskKey] $text'
+        : text;
+
     setState(() { _sending = true; _feedback = null; });
 
     try {
       final api = context.read<ApiService>();
-      final result = await api.submitMission(text);
+      final result = await api.submitMission(goal);
       if (!mounted) return;
 
       if (result != null) {
@@ -205,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _sending = false;
           _feedback = '✓ Mission lancée';
           _feedbackIsError = false;
+          _selectedTaskKey = 'libre'; // reset type after send
         });
         _controller.clear();
         await api.refresh();
@@ -314,12 +361,18 @@ class _Composer extends StatelessWidget {
   final FocusNode focus;
   final bool sending;
   final VoidCallback onSend;
+  final String hintText;
+  final String? selectedLabel;
+  final VoidCallback? onClearType;
 
   const _Composer({
     required this.controller,
     required this.focus,
     required this.sending,
     required this.onSend,
+    this.hintText = 'Que voulez-vous faire ? Recherche, analyse, code, automatisation…',
+    this.selectedLabel,
+    this.onClearType,
   });
 
   @override
@@ -329,17 +382,47 @@ class _Composer extends StatelessWidget {
       decoration: BoxDecoration(
         color: JDS.bgSurface,
         borderRadius: BorderRadius.circular(JDS.radiusLg),
-        border: Border.all(color: JDS.borderDefault),
+        border: Border.all(
+          color: selectedLabel != null
+              ? JDS.blue.withValues(alpha: 0.4)
+              : JDS.borderDefault,
+        ),
       ),
       child: Column(children: [
+        // ── Selected category badge ──
+        if (selectedLabel != null) ...[
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: JDS.blue.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: JDS.blue.withValues(alpha: 0.3)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.category_rounded, size: 11, color: JDS.blue),
+                const SizedBox(width: 4),
+                Text(selectedLabel!, style: const TextStyle(
+                  fontSize: 11, color: JDS.blue, fontWeight: FontWeight.w600,
+                )),
+              ]),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: onClearType,
+              child: const Icon(Icons.close_rounded, size: 14, color: JDS.textDim),
+            ),
+          ]),
+          const SizedBox(height: 10),
+        ],
         TextField(
           controller: controller,
           focusNode: focus,
           maxLines: 3,
           minLines: 2,
           style: const TextStyle(color: JDS.textPrimary, fontSize: 15, height: 1.5),
-          decoration: const InputDecoration(
-            hintText: 'Que voulez-vous faire ? Recherche, analyse, code, automatisation…',
+          decoration: InputDecoration(
+            hintText: hintText,
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
@@ -372,6 +455,68 @@ class _Composer extends StatelessWidget {
           ),
         ]),
       ]),
+    );
+  }
+}
+
+// ── Task Type Bar ─────────────────────────────────────────────────────────────
+
+class _TaskTypeBar extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  const _TaskTypeBar({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: _kTaskTypes.map((t) {
+          final key = t['key'] as String;
+          final label = t['label'] as String;
+          final iconCode = t['icon'] as int;
+          final isSelected = key == selected;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onSelect(key),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? JDS.blue.withValues(alpha: 0.15)
+                      : JDS.bgSurface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? JDS.blue : JDS.borderSubtle,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(
+                    IconData(iconCode, fontFamily: 'MaterialIcons'),
+                    size: 13,
+                    color: isSelected ? JDS.blue : JDS.textMuted,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? JDS.blue : JDS.textSecondary,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

@@ -10,6 +10,7 @@ import 'self_improvement_screen.dart';
 import 'health_screen.dart';
 import 'capabilities_screen.dart';
 import 'aios_dashboard_screen.dart';
+import 'admin_panel_screen.dart';
 
 /// Settings — configuration + advanced access point.
 /// Normal: server, account, logout.
@@ -87,6 +88,13 @@ class SettingsScreen extends StatelessWidget {
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
             child: JCard(padding: EdgeInsets.zero, child: Column(children: [
+              _NavItem(
+                icon: Icons.dashboard_outlined,
+                label: 'Panneau Admin',
+                subtitle: 'Métriques, coût modèles, alertes',
+                onTap: () => _push(context, const AdminPanelScreen()),
+              ),
+              const Divider(height: 1, indent: 52),
               _NavItem(
                 icon: Icons.extension_rounded,
                 label: 'Modules',

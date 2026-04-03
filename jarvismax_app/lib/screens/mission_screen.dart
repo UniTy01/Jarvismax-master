@@ -16,6 +16,27 @@ class MissionScreen extends StatefulWidget {
   State<MissionScreen> createState() => _MissionScreenState();
 }
 
+// ── Mission task types (shared with HomeScreen) ───────────────────────────────
+// Same 16 business skill definitions — key, French label, icon code, hint
+const List<Map<String, dynamic>> _kMissionTaskTypes = [
+  {'key': 'libre',                  'label': 'Libre',               'icon': 0xe3c9, 'hint': 'Décrivez votre mission...'},
+  {'key': 'market_research',        'label': 'Recherche marché',    'icon': 0xe8b6, 'hint': 'Ex : Analysez le marché des outils IA pour PME en France…'},
+  {'key': 'competitor_analysis',    'label': 'Concurrents',         'icon': 0xe14f, 'hint': 'Ex : Analysez les concurrents de [votre produit/service]…'},
+  {'key': 'positioning',            'label': 'Positionnement',      'icon': 0xe1e0, 'hint': 'Ex : Définissez le positionnement de [votre offre]…'},
+  {'key': 'pricing_strategy',       'label': 'Stratégie prix',      'icon': 0xe263, 'hint': 'Ex : Proposez une grille tarifaire pour [votre produit]…'},
+  {'key': 'growth_plan',            'label': 'Plan de croissance',  'icon': 0xe6de, 'hint': 'Ex : Créez un plan de croissance sur 6 mois pour [votre entreprise]…'},
+  {'key': 'acquisition_strategy',   'label': 'Acquisition',         'icon': 0xe7fe, 'hint': 'Ex : Définissez une stratégie d\'acquisition pour [cible client]…'},
+  {'key': 'value_proposition',      'label': 'Valeur client',       'icon': 0xe838, 'hint': 'Ex : Formulez la proposition de valeur de [votre offre]…'},
+  {'key': 'offer_design',           'label': 'Design offre',        'icon': 0xe19c, 'hint': 'Ex : Concevez une offre commerciale pour [votre marché cible]…'},
+  {'key': 'customer_persona',       'label': 'Persona client',      'icon': 0xe7fd, 'hint': 'Ex : Créez des personas clients pour [votre produit]…'},
+  {'key': 'copywriting',            'label': 'Copywriting',         'icon': 0xe22b, 'hint': 'Ex : Rédigez un texte de vente percutant pour [votre offre]…'},
+  {'key': 'funnel_design',          'label': 'Funnel',              'icon': 0xef4f, 'hint': 'Ex : Concevez un funnel de conversion pour [votre offre]…'},
+  {'key': 'landing_structure',      'label': 'Landing page',        'icon': 0xe051, 'hint': 'Ex : Structurez une landing page pour [votre produit]…'},
+  {'key': 'spec_writing',           'label': 'Rédaction spec',      'icon': 0xe873, 'hint': 'Ex : Rédigez les spécifications de [votre fonctionnalité]…'},
+  {'key': 'automation_opportunity', 'label': 'Automatisation',      'icon': 0xe553, 'hint': 'Ex : Identifiez les opportunités d\'automatisation dans [votre activité]…'},
+  {'key': 'strategy_reasoning',     'label': 'Conseil stratégique', 'icon': 0xe90f, 'hint': 'Ex : Donnez un conseil stratégique sur [ma situation actuelle]…'},
+];
+
 class _MissionScreenState extends State<MissionScreen> {
   final _controller = TextEditingController();
   final _focus       = FocusNode();
@@ -23,15 +44,12 @@ class _MissionScreenState extends State<MissionScreen> {
   Mission?  _lastMission;
   List<ActionModel> _missionActions = [];
   bool _loadingActions = false;
+  String _selectedTaskKey = 'libre';
 
-  static const _suggestions = [
-    'Analyser les logs du système',
-    'Créer un rapport de performance',
-    'Vérifier l\'état des agents',
-    'Optimiser la mémoire vault',
-    'Planifier une revue de code',
-    'Rechercher les erreurs récentes',
-  ];
+  Map<String, dynamic> get _currentTypeData =>
+      _kMissionTaskTypes.firstWhere((t) => t['key'] == _selectedTaskKey,
+          orElse: () => _kMissionTaskTypes.first);
+  String get _currentHint => _currentTypeData['hint'] as String;
 
   @override
   void initState() {
@@ -159,7 +177,7 @@ class _MissionScreenState extends State<MissionScreen> {
                       filled: false,
                       hintText: isUncensored
                           ? 'Mode uncensored — Jarvis sans filtres...'
-                          : 'Décrivez votre mission...',
+                          : _currentHint,
                       hintStyle: const TextStyle(color: JvColors.textMut, fontSize: 14),
                     ),
                   ),
@@ -185,18 +203,12 @@ class _MissionScreenState extends State<MissionScreen> {
               ),
             ),
 
-            const SectionLabel('Suggestions rapides'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _suggestions.map((s) => ActionChip(
-                label: Text(s, style: const TextStyle(fontSize: 12)),
-                onPressed: () => _controller.text = s,
-                backgroundColor: JvColors.card,
-                side: const BorderSide(color: JvColors.border),
-                labelStyle: const TextStyle(color: JvColors.textSec),
-              )).toList(),
+            const SectionLabel('Type de mission'),
+            _MissionTypeBar(
+              selected: _selectedTaskKey,
+              onSelect: (key) => setState(() => _selectedTaskKey = key),
             ),
+            const SizedBox(height: 8),
 
             if (_lastMission != null) ...[
               const SectionLabel('Résultat'),
@@ -222,17 +234,21 @@ class _MissionScreenState extends State<MissionScreen> {
       );
       return;
     }
+
+    // Prefix skill domain key so the backend can route to the right business skill
+    final goal = (_selectedTaskKey != 'libre') ? '[$_selectedTaskKey] $input' : input;
+
     setState(() { _sending = true; _lastMission = null; _missionActions = []; });
     _focus.unfocus();
 
     final api    = context.read<ApiService>();
-    final result = await api.submitMission(input);
+    final result = await api.submitMission(goal);
     if (!mounted) return;
     setState(() => _sending = false);
 
     if (result.ok && result.data != null) {
       final mission = result.data!;
-      setState(() { _lastMission = mission; _loadingActions = true; });
+      setState(() { _lastMission = mission; _loadingActions = true; _selectedTaskKey = 'libre'; });
       _controller.clear();
 
       // Attendre que l'executor traite la mission (poll léger)
@@ -449,6 +465,67 @@ class _ActionRow extends StatelessWidget {
               maxLines: 1, overflow: TextOverflow.ellipsis),
         ])),
       ]),
+    );
+  }
+}
+
+// ── Mission Type Bar ──────────────────────────────────────────────────────────
+
+class _MissionTypeBar extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  const _MissionTypeBar({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _kMissionTaskTypes.map((t) {
+          final key    = t['key']   as String;
+          final label  = t['label'] as String;
+          final code   = t['icon']  as int;
+          final isSel  = key == selected;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onSelect(key),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? JvColors.cyan.withValues(alpha: 0.12)
+                      : JvColors.card,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSel ? JvColors.cyan : JvColors.border,
+                    width: isSel ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(
+                    IconData(code, fontFamily: 'MaterialIcons'),
+                    size: 13,
+                    color: isSel ? JvColors.cyan : JvColors.textMut,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                      color: isSel ? JvColors.cyan : JvColors.textSec,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
