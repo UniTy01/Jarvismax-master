@@ -4,6 +4,40 @@ Format : `type: description (commit hash)`
 
 ---
 
+## [Pass 37 — Syntax Errors, Truncated File & Git Hygiene] — 2026-04-04
+
+### Bugs critiques corrigés
+
+- `fix`: `core/action_executor.py` — **Fichier tronqué ligne 631**.
+  Le fichier se terminait en plein milieu d'un string : `"poll_inter` (fin de
+  la méthode `status()`). La méthode n'était pas syntaxiquement fermée,
+  rendant tout import de `action_executor` impossible à l'exécution.
+  Correction : restauration de la clé `"poll_interval_seconds": _POLL_INTERVAL`
+  et de la fermeture du dict + de la méthode.
+
+- `fix`: `executor/desktop_env/editor.py:44` — **SyntaxError f-string backslash**.
+  `f"{lines[i].rstrip('\n')}"` — les backslashs dans les expressions f-string
+  sont invalides en Python < 3.12 (SyntaxError). Correction minimale :
+  extraction de `'\n'` dans une variable locale `_nl` hors du f-string.
+  Compatible Python 3.8+.
+
+- `fix`: `api/routes/extensions.py` + `api/routes/metrics_mobile.py` —
+  **Null bytes** (`\x00`) corrompant les deux fichiers. Python AST ne pouvait
+  pas les parser → ImportError au démarrage. 77 et 9 octets nuls supprimés.
+  Les deux fichiers compilent proprement (`py_compile` OK).
+
+### Git / Infrastructure
+
+- `fix`: `.gitignore` — ajout de `workspace/builds/` (246 artefacts de build,
+  ~25 MB) qui n'était pas ignoré et risquait d'être commité accidentellement.
+
+### Qualité
+
+- 4 fichiers corrigés, 0 régression introduite
+- Tous les fichiers modifiés passent `python3 -m py_compile` sans erreur
+
+---
+
 ## [Pass 36 — Agent Routing Coherence & French Language Fix] — 2026-04-04
 
 ### Bug critique — shape=patch sur messages conversationnels (score 3/10)
