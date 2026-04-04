@@ -54,6 +54,10 @@ jobs:
           cache: pip
 
       - name: Install dependencies
+        # NOTE: Deliberate manual list (not -r requirements.txt).
+        # unit-tests job installs only what 95 focused regression tests need,
+        # keeping CI fast and isolated from heavyweight production deps.
+        # If you add a test that needs a new import, add it here too.
         run: |
           pip install --quiet \
             pytest pytest-asyncio structlog pydantic pydantic-settings \
