@@ -793,6 +793,17 @@ async def router_registry_status():
 
 
 # ── Static files (dashboard) — DOIT ÊTRE EN DERNIER ───────────
+# NOTE: starlette≥1.0 StaticFiles has `assert scope["type"] == "http"` which
+# crashes (AssertionError) when a WebSocket request hits an unmatched path.
+# _WsSafeStaticFiles silently closes unknown WebSocket connections instead.
 _static_dir = Path(__file__).parent.parent / "static"
 if _static_dir.exists():
-    app.mount("/", StaticFiles(directory=str(_static_dir)), name="static")
+    class _WsSafeStaticFiles(StaticFiles):
+        async def __call__(self, scope, receive, send):
+            if scope.get("type") != "http":
+                # WebSocket to an unknown path — close gracefully, no crash
+                await send({"type": "websocket.close", "code": 4004})
+                return
+            await super().__call__(scope, receive, send)
+
+    app.mount("/", _WsSafeStaticFiles(directory=str(_static_dir)), name="static")
