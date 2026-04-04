@@ -254,7 +254,15 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer;b
     </div>
   </nav>
   <div class="sidebar-footer">
-    <div class="mode-switch"><button class="mode-btn active" data-mode="lite" onclick="setMode('lite')">Lite</button><button class="mode-btn" data-mode="full" onclick="setMode('full')">Full</button><button class="mode-btn" data-mode="admin" onclick="setMode('admin')">Admin</button></div>
+    <div class="mode-switch">
+      <button class="mode-btn active" data-mode="lite" onclick="setMode('lite')">Lite</button>
+      <button class="mode-btn" data-mode="full" onclick="setMode('full')">Full</button>
+      <button class="mode-btn" data-mode="admin" id="admin-mode-btn" onclick="requireAdminMode()" title="Admin access required">Admin</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:0 2px">
+      <span style="font-size:11px;color:var(--text-muted)" id="session-user"></span>
+      <button onclick="logout()" style="font-size:11px;color:var(--text-muted);padding:4px 8px;border-radius:4px;border:1px solid var(--border-subtle);background:none;cursor:pointer;transition:color .15s" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
+    </div>
   </div>
 </aside>
 
@@ -263,7 +271,10 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer;b
   <div class="main-header">
     <button class="btn-ghost" id="menu-btn" onclick="toggleSidebar()" style="display:none;margin-right:8px">☰</button>
     <span class="main-title" id="main-title">Home</span>
-    <div class="main-header-right"><span style="font-size:11px;color:var(--text-dim)" id="ws-dot">●</span></div>
+    <div class="main-header-right">
+      <span style="font-size:11px;color:var(--text-dim)" id="ws-dot">●</span>
+      <a href="/login.html" onclick="logout();return false;" style="font-size:12px;color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border-subtle);border-radius:6px;margin-left:8px;transition:all .15s" onmouseover="this.style.borderColor='var(--border-default)'" onmouseout="this.style.borderColor='var(--border-subtle)'">↩ Logout</a>
+    </div>
   </div>
   <div class="main-body" id="main-body">
 
@@ -383,14 +394,35 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer;b
 
 <!-- ═══ JAVASCRIPT ════════════════════════════════════════════ -->
 <script>
+/* ─── Auth guard ──────────────────────────────────────────── */
+(function authGuard() {
+  const t = localStorage.getItem('jarvis_token');
+  if (!t) {
+    window.location.replace('/login.html?next=' + encodeURIComponent(location.pathname));
+  }
+})();
+
 /* ─── State ───────────────────────────────────────────────── */
 let appMode = localStorage.getItem('jarvis_mode') || 'lite';
 let token = localStorage.getItem('jarvis_token') || '';
+let userRole = localStorage.getItem('jarvis_role') || 'user';
 let ws = null;
 let allMissions = [];
 
 /* ─── Init ────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore session info
+  const username = localStorage.getItem('jarvis_username') || '';
+  const sessionEl = document.getElementById('session-user');
+  if (sessionEl && username) sessionEl.textContent = username;
+
+  // Admin button: only show if role=admin
+  const adminBtn = document.getElementById('admin-mode-btn');
+  if (adminBtn && userRole !== 'admin') {
+    adminBtn.style.opacity = '.4';
+    adminBtn.title = 'Requires admin credentials — sign in as admin';
+  }
+
   setMode(appMode);
   updateGreeting();
   connectWS();
@@ -440,6 +472,26 @@ function setMode(mode) {
   }
 }
 
+function requireAdminMode() {
+  if (userRole === 'admin') {
+    setMode('admin');
+  } else {
+    // Not admin — redirect to login with a hint
+    const msg = encodeURIComponent('Admin access required. Please sign in with admin credentials.');
+    window.location.href = '/login.html?hint=' + msg;
+  }
+}
+
+function logout() {
+  localStorage.removeItem('jarvis_token');
+  localStorage.removeItem('jarvis_username');
+  localStorage.removeItem('jarvis_role');
+  localStorage.removeItem('jarvis_mode');
+  localStorage.removeItem('jarvis_remember');
+  if (ws) try { ws.close(); } catch(_) {}
+  window.location.replace('/login.html');
+}
+
 /* ─── Greeting ────────────────────────────────────────────── */
 function updateGreeting() {
   const h = new Date().getHours();
@@ -459,7 +511,7 @@ function hdrs() {
 async function api(path) {
   try {
     const r = await fetch(path, {headers:hdrs()});
-    if (r.status === 401) { window.location.href='/index.html'; return null; }
+    if (r.status === 401) { logout(); return null; }
     if (!r.ok) return null;
     return r.json();
   } catch { return null; }
