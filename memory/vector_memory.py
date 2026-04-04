@@ -346,3 +346,188 @@ class VectorMemory:
         self._docs = []
         if self._path.exists():
             self._path.unlink()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Phase D — Qdrant backend (QDRANT_MEMORY_ENABLED=true)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class QdrantVectorMemory:
+    """
+    Qdrant-backed vector memory.
+
+    Implements the same add()/search() interface as VectorMemory so it can
+    be used as a drop-in replacement.
+
+    Activate: QDRANT_MEMORY_ENABLED=true
+    Falls back to local VectorMemory on any Qdrant error — never raises.
+
+    Collection: QDRANT_COLLECTION (default: jarvis_memory)
+    Vector dim:  QDRANT_VECTOR_DIM (default: 384, matches all-MiniLM-L6-v2)
+    """
+
+    COLLECTION = "jarvis_memory"
+    VECTOR_DIM = 384
+
+    def __init__(self, settings, fallback: "VectorMemory | None" = None):
+        self.s = settings
+        self._fallback = fallback  # VectorMemory instance used on Qdrant error
+        self._encoder = None
+
+        # Read config from settings / env
+        import os
+        self._qdrant_url = (
+            getattr(settings, "qdrant_url", None)
+            or os.environ.get("QDRANT_URL", "http://qdrant:6333")
+        )
+        self._qdrant_key = (
+            getattr(settings, "qdrant_api_key", None)
+            or os.environ.get("QDRANT_API_KEY", "") or None
+        )
+        self.COLLECTION = os.environ.get("QDRANT_COLLECTION", self.COLLECTION)
+        self.VECTOR_DIM = int(os.environ.get("QDRANT_VECTOR_DIM", str(self.VECTOR_DIM)))
+
+        self._ensure_collection()
+
+    def _client(self):
+        from qdrant_client import QdrantClient
+        return QdrantClient(url=self._qdrant_url, api_key=self._qdrant_key)
+
+    def _ensure_collection(self) -> None:
+        """Create collection if it doesn't exist. Fail silently."""
+        try:
+            from qdrant_client.models import Distance, VectorParams
+            c = self._client()
+            existing = {col.name for col in c.get_collections().collections}
+            if self.COLLECTION not in existing:
+                c.create_collection(
+                    collection_name=self.COLLECTION,
+                    vectors_config=VectorParams(
+                        size=self.VECTOR_DIM,
+                        distance=Distance.COSINE,
+                    ),
+                )
+                log.info("qdrant_collection_created",
+                         collection=self.COLLECTION, dim=self.VECTOR_DIM)
+        except Exception as e:
+            log.warning("qdrant_ensure_collection_failed", err=str(e)[:80])
+
+    def _get_encoder(self):
+        if self._encoder is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._encoder = SentenceTransformer(_MODEL_NAME)
+            except Exception as e:
+                log.warning("qdrant_memory_encoder_unavailable", err=str(e)[:60])
+        return self._encoder
+
+    def _encode(self, text: str) -> list[float] | None:
+        enc = self._get_encoder()
+        if enc is None:
+            return None
+        try:
+            import numpy as np
+            vec = enc.encode(text, normalize_embeddings=True)
+            return vec.tolist()
+        except Exception as e:
+            log.warning("qdrant_memory_encode_error", err=str(e)[:60])
+            return None
+
+    def add(self, text: str, metadata: dict | None = None) -> str:
+        """Add document. Returns doc_id. Falls back to local memory on error."""
+        import hashlib
+        doc_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+        doc_id = f"vm_{doc_hash}"
+        try:
+            from qdrant_client.models import PointStruct
+            vec = self._encode(text)
+            if vec is None:
+                raise ValueError("encoder unavailable")
+            payload = {"text": text[:2000], "metadata": metadata or {}}
+            self._client().upsert(
+                collection_name=self.COLLECTION,
+                points=[PointStruct(id=doc_hash, vector=vec, payload=payload)],
+            )
+            log.debug("qdrant_memory_added", id=doc_id)
+            return doc_id
+        except Exception as e:
+            log.warning("qdrant_memory_add_fallback", err=str(e)[:80])
+            if self._fallback:
+                return self._fallback.add(text, metadata)
+            return doc_id
+
+    def search(
+        self,
+        query: str,
+        top_k: int = _DEFAULT_TOPK,
+        filter_fn: Any | None = None,
+    ) -> list[dict]:
+        """Search documents. Falls back to local memory on error."""
+        try:
+            vec = self._encode(query)
+            if vec is None:
+                raise ValueError("encoder unavailable")
+            hits = self._client().search(
+                collection_name=self.COLLECTION,
+                query_vector=vec,
+                limit=top_k,
+                with_payload=True,
+            )
+            results = []
+            for h in hits:
+                payload = h.payload or {}
+                doc = {
+                    "id": f"vm_{h.id}",
+                    "text": payload.get("text", ""),
+                    "score": round(h.score, 4),
+                    "metadata": payload.get("metadata", {}),
+                }
+                if filter_fn is None or filter_fn(doc):
+                    results.append(doc)
+            log.debug("qdrant_memory_search",
+                      query=query[:40], results=len(results))
+            return results
+        except Exception as e:
+            log.warning("qdrant_memory_search_fallback", err=str(e)[:80])
+            if self._fallback:
+                return self._fallback.search(query, top_k=top_k, filter_fn=filter_fn)
+            return []
+
+    def get_stats(self) -> dict:
+        try:
+            info = self._client().get_collection(self.COLLECTION)
+            return {
+                "backend": "qdrant",
+                "collection": self.COLLECTION,
+                "total_docs": info.points_count or 0,
+                "qdrant_url": self._qdrant_url,
+            }
+        except Exception as e:
+            return {"backend": "qdrant", "error": str(e)[:80]}
+
+
+def _qdrant_memory_enabled() -> bool:
+    """Check QDRANT_MEMORY_ENABLED env var. Default: false."""
+    import os
+    return os.environ.get("QDRANT_MEMORY_ENABLED", "false").lower() in ("1", "true", "yes")
+
+
+def get_vector_memory(settings) -> "VectorMemory | QdrantVectorMemory":
+    """
+    Factory: returns QdrantVectorMemory when QDRANT_MEMORY_ENABLED=true,
+    otherwise returns VectorMemory (local numpy fallback).
+
+    QdrantVectorMemory itself falls back to local VectorMemory on any error,
+    so this factory is safe to call unconditionally.
+    """
+    local = VectorMemory(settings)
+    if _qdrant_memory_enabled():
+        try:
+            qvm = QdrantVectorMemory(settings, fallback=local)
+            log.info("vector_memory_backend", backend="qdrant")
+            return qvm
+        except Exception as e:
+            log.warning("qdrant_memory_init_failed_fallback_local",
+                        err=str(e)[:80])
+    log.debug("vector_memory_backend", backend="local")
+    return local
