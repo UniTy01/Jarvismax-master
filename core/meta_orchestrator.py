@@ -1116,6 +1116,8 @@ class MetaOrchestrator:
                     and _score_for_retry < _retry_threshold
                     and not _did_retry
                     and outcome.retries == 0
+                    and len(goal.strip()) > 80           # skip retry for short/conversational goals
+                    and not mid.endswith("-retry")       # prevent retry chains
                 ):
                     ctx.metadata["_critique_retry_done"] = True
                     log.info("mission.critique_retry",
