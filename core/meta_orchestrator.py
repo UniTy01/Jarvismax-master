@@ -691,6 +691,36 @@ class MetaOrchestrator:
                 except Exception as _kplan_err:
                     log.debug("kernel_planning_skipped", err=str(_kplan_err)[:100])
 
+            # ── Phase 3-P42: Pre-planning memory retrieval ────────
+            # Retrieve 3 failures + 3 successes BEFORE context assembly
+            # so planner has explicit "avoid/reuse" guidance (Pass 42 — Phase 3).
+            _mission_lessons = None
+            if not _is_chat_mode:
+                try:
+                    from core.orchestration.memory_retrieval import retrieve_mission_lessons
+                    _task_type_for_mem = str(
+                        ctx.metadata.get("classification", {}).get("task_type", "") or ""
+                    )
+                    _mission_lessons = retrieve_mission_lessons(
+                        goal=goal,
+                        task_type=_task_type_for_mem,
+                        top_k=3,
+                    )
+                    ctx.metadata["mission_lessons"] = _mission_lessons.to_dict()
+                    trace.record("retrieve", "mission_lessons",
+                                 failures=_mission_lessons.failure_count,
+                                 successes=_mission_lessons.success_count,
+                                 has_lessons=_mission_lessons.has_lessons,
+                                 retrieval_ok=_mission_lessons.retrieval_ok)
+                    log.info("pre_planning_memory_retrieved",
+                             mission_id=mid,
+                             failures=_mission_lessons.failure_count,
+                             successes=_mission_lessons.success_count,
+                             has_lessons=_mission_lessons.has_lessons)
+                except Exception as _ml_err:
+                    log.warning("phase_failed", phase="pre_planning_memory",
+                                err=str(_ml_err)[:100])
+
             # ── Phase 2: Assemble context ─────────────────────────
             try:
                 from core.orchestration.context_assembler import assemble as assemble_context
@@ -823,7 +853,64 @@ class MetaOrchestrator:
                     trace.record("retrieve", "kernel_lessons_injected",
                                  count=len(_kernel_lessons))
 
+            # ── Phase 1-P42: Mission Reasoning State ──────────────────────
+            # Build explicit state model (initial→target, preconditions,
+            # expected effects, success criteria, failure modes) before exec.
+            # Only for non-trivial missions. Fail-open. (Pass 42 — Phase 1)
+            _mission_state = None
+            if not _is_chat_mode:
+                try:
+                    from core.orchestration.mission_reasoning_state import build as build_mission_state
+                    _prior_fail_snippets = [
+                        e.get("content", "")[:80]
+                        for e in (
+                            (rich_ctx.recent_failures if rich_ctx else [])
+                            + (ctx.metadata.get("mission_lessons", {}).get("avoid", []))
+                        )
+                        if isinstance(e, (str, dict))
+                    ][:3]
+                    _mission_state = build_mission_state(
+                        goal=goal,
+                        mission_id=mid,
+                        classification=ctx.metadata.get("classification"),
+                        context={
+                            "prior_skills":      rich_ctx.prior_skills if rich_ctx else [],
+                            "relevant_memories": rich_ctx.relevant_memories if rich_ctx else [],
+                            "recent_failures":   rich_ctx.recent_failures if rich_ctx else [],
+                        },
+                        prior_failures=_prior_fail_snippets,
+                        memory_lessons=_kernel_context.get("kernel_lessons", []),
+                    )
+                    ctx.metadata["mission_reasoning_state"] = _mission_state.to_dict()
+                    # Inject state model into enriched_goal for agents
+                    _state_injection = _mission_state.to_prompt_injection()
+                    if _state_injection:
+                        enriched_goal += "\n\n---\n" + _state_injection
+                    trace.record("plan", "mission_state_built",
+                                 task_type=_mission_state.task_type,
+                                 complexity=_mission_state.complexity,
+                                 preconditions=len(_mission_state.preconditions),
+                                 failure_modes=len(_mission_state.failure_modes))
+                    log.info("mission_reasoning_state_built",
+                             mission_id=mid,
+                             task_type=_mission_state.task_type,
+                             complexity=_mission_state.complexity,
+                             candidate_actions=len(_mission_state.candidate_actions))
+                except Exception as _mrs_err:
+                    log.warning("phase_failed", phase="mission_reasoning_state",
+                                err=str(_mrs_err)[:100])
+
+            # Inject Phase 3 memory lessons into enriched_goal
+            if _mission_lessons is not None and _mission_lessons.has_lessons:
+                _lessons_injection = _mission_lessons.to_prompt_injection()
+                if _lessons_injection:
+                    enriched_goal += "\n\n---\n" + _lessons_injection
+                    trace.record("retrieve", "mission_lessons_injected",
+                                 avoid=len(_mission_lessons.avoid),
+                                 reuse=len(_mission_lessons.reuse))
+
             # ── Pre-execution assessment ──────────────────
+            pre_assess = None
             try:
                 from core.orchestration.pre_execution import assess_before_execution
                 pre_assess = assess_before_execution(
@@ -840,6 +927,63 @@ class MetaOrchestrator:
                     enriched_goal += "\n\nWARNING: Similar tasks have failed before. Use caution."
             except Exception as _exc:
                 log.warning("phase_failed", phase="pre_assessment", err=str(_exc)[:100])
+
+            # ── Phase 2-P42: Confidence Policy ────────────────────────────
+            # Confidence now CHANGES runtime behavior (not just reporting).
+            # PolicyDecision may override needs_approval, inject prompt, or abort.
+            # (Pass 42 — Phase 2)
+            if not _is_chat_mode and pre_assess is not None:
+                try:
+                    from core.orchestration.confidence_policy import get_confidence_policy
+                    _classification_dict = ctx.metadata.get("classification", {})
+                    _cp_decision = get_confidence_policy().decide(
+                        confidence=pre_assess.estimated_confidence,
+                        risk_level=str(_classification_dict.get("risk_level", "low") or "low"),
+                        task_type=str(_classification_dict.get("task_type", "") or ""),
+                        goal=goal,
+                        strategy_suggestion=pre_assess.strategy_suggestion or "",
+                        has_prior_failures=bool(pre_assess.similar_failures),
+                        is_destructive=(
+                            str(_classification_dict.get("task_type", "")) in
+                            ("deployment", "deletion", "database_write")
+                        ),
+                    )
+                    ctx.metadata["confidence_policy"] = _cp_decision.to_dict()
+
+                    # ── Apply behavioral changes ────────────────────────────
+                    if _cp_decision.abort:
+                        # Abort mission — confidence below safe threshold
+                        raise RuntimeError(
+                            f"Mission aborted by confidence policy: "
+                            f"{_cp_decision.abort_reason}"
+                        )
+
+                    if _cp_decision.require_approval and not needs_approval:
+                        needs_approval = True
+                        log.info(
+                            "confidence_policy_requires_approval",
+                            mission_id=mid,
+                            tier=_cp_decision.tier.value,
+                            confidence=pre_assess.estimated_confidence,
+                            reason=_cp_decision.approval_reason,
+                        )
+
+                    if _cp_decision.prompt_additions:
+                        for _pa in _cp_decision.prompt_additions:
+                            enriched_goal += f"\n\n[POLICY] {_pa}"
+
+                    trace.record(
+                        "pre_check", f"confidence_policy:{_cp_decision.tier.value}",
+                        tier=_cp_decision.tier.value,
+                        confidence=pre_assess.estimated_confidence,
+                        require_approval=_cp_decision.require_approval,
+                        abort=_cp_decision.abort,
+                    )
+                except RuntimeError:
+                    raise   # Re-raise abort
+                except Exception as _cp_err:
+                    log.warning("phase_failed", phase="confidence_policy",
+                                err=str(_cp_err)[:100])
 
             from core.orchestration.execution_supervisor import supervise
             delegate = self.v2 if use_budget else self.jarvis
@@ -1038,6 +1182,25 @@ class MetaOrchestrator:
                              reason=d.get("error", ""),
                              **{k: v for k, v in d.items()
                                 if k not in ("step", "error", "reason")})
+
+            # ── Phase 1-P42 post-exec: update_observed ────────────────────────
+            # Close the loop on MissionReasoningState: fill observed effects
+            # and compute expected vs observed diff. Fail-open.
+            if _mission_state is not None:
+                try:
+                    _mission_state.update_observed(
+                        result=outcome.result if outcome.success else "",
+                        error=outcome.error if hasattr(outcome, "error") else "",
+                    )
+                    ctx.metadata["mission_reasoning_state"] = _mission_state.to_dict()
+                    trace.record(
+                        "evaluate", "mission_state_observed",
+                        satisfied=_mission_state.state_satisfied,
+                        coverage=_mission_state.expected_vs_observed.get("coverage_ratio", 0),
+                    )
+                except Exception as _mso_err:
+                    log.warning("phase_failed", phase="mission_state_observe",
+                                err=str(_mso_err)[:80])
 
             if outcome.success:
                 self._circuit_breaker.record_success()
