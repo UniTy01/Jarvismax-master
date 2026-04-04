@@ -86,6 +86,38 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer;b
 .view-panel{display:none}.view-panel.active{display:block}
 .view-panel iframe{width:100%;height:calc(100vh - 52px);border:none}
 
+/* ─── Chat ────────────────────────────────────────────────── */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 52px);overflow:hidden}
+.chat-messages{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:16px}
+.chat-bubble{max-width:72%;animation:fadeUp .18s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.chat-bubble.user{align-self:flex-end}
+.chat-bubble.jarvis{align-self:flex-start}
+.bubble-inner{padding:12px 16px;border-radius:14px;font-size:13px;line-height:1.6}
+.chat-bubble.user .bubble-inner{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.chat-bubble.jarvis .bubble-inner{background:var(--bg-elevated);border:1px solid var(--border-default);color:var(--text-primary);border-bottom-left-radius:4px}
+.bubble-meta{font-size:11px;color:var(--text-dim);margin-top:4px}
+.chat-bubble.user .bubble-meta{text-align:right}
+.bubble-inner pre{white-space:pre-wrap;font-family:var(--font-mono);font-size:12px;margin-top:8px;padding:10px;background:rgba(0,0,0,.25);border-radius:6px}
+.chat-input-bar{border-top:1px solid var(--border-subtle);padding:16px 24px;display:flex;gap:10px;align-items:flex-end;background:var(--bg-surface)}
+.chat-input-bar textarea{flex:1;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font);font-size:13px;padding:10px 14px;resize:none;min-height:44px;max-height:140px;line-height:1.5;transition:border-color .15s;overflow-y:auto}
+.chat-input-bar textarea:focus{outline:none;border-color:var(--border-focus)}
+.chat-input-bar textarea::placeholder{color:var(--text-dim)}
+.chat-send-btn{width:40px;height:40px;background:var(--blue);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s;font-size:16px;color:#fff}
+.chat-send-btn:disabled{opacity:.4}
+.chat-send-btn:not(:disabled):hover{opacity:.85}
+.chat-typing{display:flex;align-items:center;gap:5px;padding:10px 14px}
+.chat-typing span{width:7px;height:7px;border-radius:50%;background:var(--text-dim);animation:bounce 1.2s ease-in-out infinite}
+.chat-typing span:nth-child(2){animation-delay:.2s}
+.chat-typing span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text-dim)}
+.chat-empty-icon{font-size:40px;opacity:.5}
+.chat-empty-text{font-size:14px;color:var(--text-secondary)}
+.chat-suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.chat-suggestion{padding:8px 14px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:20px;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:all .15s}
+.chat-suggestion:hover{border-color:var(--blue);color:var(--blue)}
+
 /* ─── Skeleton ────────────────────────────────────────────── */
 @keyframes shimmer{0%{opacity:.06}50%{opacity:.1}100%{opacity:.06}}
 .skeleton{background:var(--text-primary);border-radius:4px;animation:shimmer 1.5s ease-in-out infinite}
@@ -200,6 +232,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer;b
     <div class="nav-group">
       <div class="nav-group-label">Core</div>
       <div class="nav-item active" data-view="home" onclick="nav(this)"><span class="nav-icon">🏠</span>Home</div>
+      <div class="nav-item" data-view="chat" onclick="nav(this)"><span class="nav-icon">💬</span>Chat</div>
       <div class="nav-item" data-view="missions" onclick="nav(this)"><span class="nav-icon">🚀</span>Missions<span class="nav-badge blue" id="nav-m-count" style="display:none"></span></div>
       <div class="nav-item" data-view="approvals" onclick="nav(this)"><span class="nav-icon">✅</span>Approvals<span class="nav-badge" id="nav-a-count" style="display:none"></span></div>
     </div>
@@ -319,6 +352,28 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer;b
     <div class="view-panel" id="view-mcp"><iframe data-src="/mcp.html"></iframe></div>
     <div class="view-panel" id="view-finance"><iframe data-src="/finance.html"></iframe></div>
 
+    <!-- ═══ CHAT ══════════════════════════════════════════════ -->
+    <div class="view-panel" id="view-chat" style="padding:0">
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-empty" id="chat-empty">
+            <div class="chat-empty-icon">💬</div>
+            <div class="chat-empty-text">Ask Jarvis anything</div>
+            <div class="chat-suggestions">
+              <div class="chat-suggestion" onclick="chatSuggest('What can you do?')">What can you do?</div>
+              <div class="chat-suggestion" onclick="chatSuggest('Show me the last 5 missions')">Show last 5 missions</div>
+              <div class="chat-suggestion" onclick="chatSuggest('What is the system status?')">System status</div>
+              <div class="chat-suggestion" onclick="chatSuggest('Search GitHub issues')">Search GitHub issues</div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-bar">
+          <textarea id="chat-input" placeholder="Message Jarvis… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+          <button class="chat-send-btn" id="chat-send-btn" onclick="chatSend()">➤</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 </div>
@@ -364,7 +419,7 @@ function nav(el) {
     const iframe = panel.querySelector('iframe[data-src]');
     if (iframe && !iframe.src) { iframe.src = iframe.dataset.src; iframe.removeAttribute('data-src'); }
   }
-  const titles = {home:'Home',missions:'Missions',approvals:'Approvals',system:'System Health',runs:'Plan Runs',modules:'Modules',operations:'Operations',economic:'Economic Intelligence',routing:'Routing',events:'Events',dashboard:'Dashboard',mcp:'MCP Servers',finance:'Finance'};
+  const titles = {home:'Home',chat:'Chat',missions:'Missions',approvals:'Approvals',system:'System Health',runs:'Plan Runs',modules:'Modules',operations:'Operations',economic:'Economic Intelligence',routing:'Routing',events:'Events',dashboard:'Dashboard',mcp:'MCP Servers',finance:'Finance'};
   document.getElementById('main-title').textContent = titles[view] || view;
   if (view === 'missions') loadMissionsFull();
   if (view === 'approvals') loadApprovals();
@@ -635,6 +690,145 @@ function connectWS() {
     ws.onclose = () => { document.getElementById('ws-dot').style.color='var(--text-dim)'; setTimeout(connectWS,5000); };
     ws.onmessage = e => { try { const m=JSON.parse(e.data); if(m.type==='mission_update'||m.type==='status_update'){loadMissions();loadStatus();} }catch{} };
   } catch { document.getElementById('ws-dot').style.color='var(--red)'; setTimeout(connectWS,5000); }
+}
+
+/* ─── Chat ────────────────────────────────────────────────── */
+let chatHistory = [];
+
+(function initChat() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('chat-input');
+    if (!inp) return;
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
+    });
+    inp.addEventListener('input', () => {
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 140) + 'px';
+    });
+  });
+})();
+
+function chatSuggest(text) {
+  document.getElementById('chat-input').value = text;
+  chatSend();
+}
+
+async function chatSend() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('chat-send-btn');
+  btn.disabled = true;
+  inp.value = '';
+  inp.style.height = 'auto';
+
+  // Hide empty state
+  const empty = document.getElementById('chat-empty');
+  if (empty) empty.style.display = 'none';
+
+  // Add user bubble
+  chatAppend('user', text);
+  chatHistory.push({role:'user', text});
+
+  // Add typing indicator
+  const typingId = 'typing-' + Date.now();
+  const msgs = document.getElementById('chat-messages');
+  const typing = document.createElement('div');
+  typing.className = 'chat-bubble jarvis';
+  typing.id = typingId;
+  typing.innerHTML = '<div class="bubble-inner"><div class="chat-typing"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(typing);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  try {
+    // Submit mission
+    const r = await fetch('/api/v3/missions', {
+      method: 'POST',
+      headers: hdrs(),
+      body: JSON.stringify({user_input: text})
+    });
+    const d = await r.json();
+
+    if (!r.ok || !d.mission_id) {
+      removeTyping(typingId);
+      chatAppend('jarvis', '⚠️ ' + (d.detail || d.error || 'Submission failed'), null, true);
+      btn.disabled = false;
+      return;
+    }
+
+    // Poll for result
+    const result = await chatPoll(d.mission_id);
+    removeTyping(typingId);
+
+    if (result) {
+      const output = result.final_output || result.result || result.summary || '';
+      const status = (result.status || '').toLowerCase();
+      if (status === 'failed' || status === 'error') {
+        chatAppend('jarvis', '⚠️ Mission failed: ' + (result.error || 'Unknown error'), d.mission_id, true);
+      } else {
+        chatAppend('jarvis', output || 'Mission completed.', d.mission_id);
+      }
+      chatHistory.push({role:'jarvis', text: output || ''});
+    } else {
+      chatAppend('jarvis', '⏳ Mission is running… check the Missions tab for results.', d.mission_id);
+    }
+  } catch(e) {
+    removeTyping(typingId);
+    chatAppend('jarvis', '⚠️ Connection error.', null, true);
+  }
+
+  btn.disabled = false;
+  loadMissions(); // refresh mission count
+}
+
+async function chatPoll(missionId, maxWait = 60000) {
+  const start = Date.now();
+  const interval = 1500;
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, interval));
+    try {
+      const r = await fetch('/api/v3/missions/' + missionId, {headers: hdrs()});
+      if (!r.ok) continue;
+      const d = await r.json();
+      const m = d.mission || d;
+      const st = (m.status || '').toLowerCase();
+      if (st === 'done' || st === 'completed' || st === 'failed' || st === 'error') return m;
+    } catch { /* continue polling */ }
+  }
+  return null; // timeout
+}
+
+function chatAppend(role, text, missionId, isError) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ' + role;
+
+  const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const metaExtra = missionId ? ' · <span style="font-family:var(--font-mono)">' + missionId.substring(0,8) + '…</span>' : '';
+
+  // Format text: detect JSON blocks
+  let formatted = esc(text);
+  if (text && text.trim().startsWith('{')) {
+    try { JSON.parse(text); formatted = '<pre>' + esc(text) + '</pre>'; } catch {}
+  } else if (text && text.includes('\n')) {
+    formatted = esc(text).replace(/\n/g, '<br>');
+  }
+
+  div.innerHTML = `
+    <div class="bubble-inner" style="${isError ? 'border-color:var(--red-soft);' : ''}">
+      ${formatted || '<span style="color:var(--text-dim)">—</span>'}
+    </div>
+    <div class="bubble-meta">${role === 'user' ? 'You' : 'Jarvis'} · ${now}${metaExtra}</div>
+  `;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
 }
 
 /* ─── Utils ───────────────────────────────────────────────── */
