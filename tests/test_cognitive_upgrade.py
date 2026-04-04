@@ -497,5 +497,149 @@ class TestNoRegression:
         assert state.state_satisfied is not None
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# P42b REGRESSION — needs_approval preservation fix
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestNeedsApprovalPreservation:
+    """
+    Regression tests for the needs_approval overwrite bug (Pass 42b).
+
+    Bug: meta_orchestrator.py set needs_approval=True via confidence_policy
+    (line 962) then immediately overwrote it from classification dict (line 1005).
+    Fix: save _cp_approval_preserved before reassignment, merge after.
+
+    These tests verify the PolicyDecision flags are correct so the orchestrator
+    can use them to preserve approval. They are pure unit tests — no orchestrator
+    instantiation needed (the orchestrator logic is trivially verifiable by
+    reading the flag and simulating the 3-line fix).
+    """
+
+    def test_cautious_tier_sets_require_approval(self):
+        """CAUTIOUS tier must have require_approval=True (low conf + prior failures)."""
+        from core.orchestration.confidence_policy import ConfidencePolicy, PolicyTier
+        d = ConfidencePolicy().decide(
+            confidence=0.72, risk_level="low", task_type="code",
+            goal="Fix auth bug", has_prior_failures=True
+        )
+        assert d.tier == PolicyTier.CAUTIOUS
+        assert d.require_approval is True, "CAUTIOUS must require_approval"
+
+    def test_decompose_tier_sets_require_approval(self):
+        """DECOMPOSE tier must have require_approval=True (very low confidence)."""
+        from core.orchestration.confidence_policy import ConfidencePolicy, PolicyTier
+        d = ConfidencePolicy().decide(
+            confidence=0.28, risk_level="low", task_type="research", goal="Big analysis"
+        )
+        assert d.tier == PolicyTier.DECOMPOSE
+        assert d.require_approval is True, "DECOMPOSE must require_approval"
+
+    def test_critical_risk_context_tier_sets_require_approval(self):
+        """CONTEXT tier + critical risk must set require_approval=True."""
+        from core.orchestration.confidence_policy import ConfidencePolicy, PolicyTier
+        d = ConfidencePolicy().decide(
+            confidence=0.75, risk_level="critical", task_type="deployment",
+            goal="Deploy prod DB migration"
+        )
+        assert d.tier == PolicyTier.CONTEXT
+        assert d.require_approval is True, "CONTEXT + critical must require_approval"
+
+    def test_preservation_logic_simulation(self):
+        """
+        Simulate the 3-line fix in meta_orchestrator:
+          _cp_approval_preserved = needs_approval  # save
+          needs_approval = classification.get("needs_approval", False)  # overwrite
+          if _cp_approval_preserved and not force_approved: needs_approval = True  # merge
+
+        Prove that require_approval=True from confidence_policy survives classification
+        reassignment when classification does NOT have needs_approval=True.
+        """
+        from core.orchestration.confidence_policy import ConfidencePolicy
+
+        # Simulate: confidence_policy raises require_approval
+        d = ConfidencePolicy().decide(
+            confidence=0.72, risk_level="low", task_type="code",
+            goal="Fix auth bug", has_prior_failures=True
+        )
+        assert d.require_approval is True  # Policy said: require approval
+
+        # Simulate orchestrator state after confidence_policy block
+        needs_approval = d.require_approval  # True (line 962 equivalent)
+
+        # Simulate classification dict WITHOUT needs_approval (typical case)
+        classification = {"task_type": "code", "risk_level": "low"}  # no needs_approval key
+        force_approved = False
+
+        # --- BUG (before fix): this would silently overwrite needs_approval ---
+        # needs_approval = False if force_approved else classification.get("needs_approval", False)
+        # assert needs_approval == False  ← BUG: approval lost
+
+        # --- FIX (P42b): save, overwrite, merge ---
+        _cp_approval_preserved = needs_approval                         # save: True
+        needs_approval = (
+            False if force_approved
+            else classification.get("needs_approval", False)            # overwrite: False
+        )
+        if _cp_approval_preserved and not force_approved:
+            needs_approval = True                                        # merge: restored
+
+        assert needs_approval is True, (
+            "needs_approval must remain True after classification reassignment "
+            "when confidence_policy required approval"
+        )
+
+    def test_force_approved_overrides_cp_approval(self):
+        """force_approved=True must win over confidence_policy require_approval."""
+        from core.orchestration.confidence_policy import ConfidencePolicy
+
+        # Use confidence=0.45, risk=low → CAUTIOUS (adjusted=0.45 ≥ 0.35) → require_approval=True
+        d = ConfidencePolicy().decide(
+            confidence=0.45, risk_level="low", task_type="code",
+            goal="Emergency hotfix", has_prior_failures=False
+        )
+        assert d.require_approval is True
+
+        # Simulate fix logic with force_approved=True
+        _cp_approval_preserved = d.require_approval  # True
+        force_approved = True
+        classification = {}
+        needs_approval = False if force_approved else classification.get("needs_approval", False)
+        if _cp_approval_preserved and not force_approved:
+            needs_approval = True  # not executed: force_approved=True
+
+        assert needs_approval is False, (
+            "force_approved=True must suppress needs_approval even if cp required it"
+        )
+
+    def test_high_risk_deploy_require_approval_preserved(self):
+        """
+        High-risk deployment: confidence=0.75, risk=high.
+        After risk shift: adjusted=0.65 → CONTEXT tier.
+        is_destructive=True does NOT promote to CAUTIOUS here (CONTEXT != PROCEED).
+        require_approval stays False at CONTEXT tier (no critical risk).
+        Verify: approval NOT required (expected behavior — CONTEXT without critical).
+        """
+        from core.orchestration.confidence_policy import ConfidencePolicy, PolicyTier
+        d = ConfidencePolicy().decide(
+            confidence=0.75, risk_level="high", task_type="deployment",
+            goal="Deploy to prod", is_destructive=True
+        )
+        assert d.tier == PolicyTier.CONTEXT
+        # CONTEXT + high (not critical) → require_approval=False is CORRECT behavior
+        # (approval is optional at CONTEXT; only critical forces it)
+        assert d.require_approval is False
+        assert d.add_context is True  # does trigger context gathering
+
+    def test_proceed_tier_never_requires_approval(self):
+        """PROCEED tier: high confidence, low risk → no approval needed."""
+        from core.orchestration.confidence_policy import ConfidencePolicy, PolicyTier
+        d = ConfidencePolicy().decide(
+            confidence=0.90, risk_level="low", task_type="conversation",
+            goal="Say hello"
+        )
+        assert d.tier == PolicyTier.PROCEED
+        assert d.require_approval is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

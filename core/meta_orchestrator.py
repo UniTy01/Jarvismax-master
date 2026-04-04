@@ -1002,10 +1002,17 @@ class MetaOrchestrator:
             # Wire reasoning result via enriched_goal metadata (session-safe, no shared state)
             # The delegate reads it from session._reasoning_result, not self._reasoning_result
             # This avoids race conditions when multiple missions share the delegate instance.
+            #
+            # Preserve confidence_policy require_approval before classification reassignment.
+            # Bug (Pass 42): line below overwrote needs_approval=True set by confidence_policy.
+            # Fix: save flag, reassign from classification, then merge. (Pass 42 fix — P42b)
+            _cp_approval_preserved = needs_approval  # True if confidence_policy raised it
             needs_approval = (
                 False if force_approved
                 else ctx.metadata.get("classification", {}).get("needs_approval", False)
             )
+            if _cp_approval_preserved and not force_approved:
+                needs_approval = True
 
             # ── Phase 3-kernel: Kernel policy check ───────────────────────────────
             # Run mission through kernel RiskEngine + KernelPolicyEngine.
