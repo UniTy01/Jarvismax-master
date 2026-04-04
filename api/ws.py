@@ -149,9 +149,22 @@ async def websocket_stream(
     stream.subscribe(_on_new_event)
 
     try:
+        import json as _json
         while True:
             data = await websocket.receive_text()
-            log.debug("ws_client_msg", msg=data[:200])
+            # Respond to pings — parse JSON to handle {"type":"ping","ts":...}
+            _is_ping = data.strip().lower() == 'ping'
+            if not _is_ping:
+                try:
+                    _p = _json.loads(data)
+                    if isinstance(_p, dict) and _p.get('type') == 'ping':
+                        _is_ping = True
+                except Exception:
+                    pass
+            if _is_ping:
+                await websocket.send_json({"type": "pong"})
+            else:
+                log.debug("ws_client_msg", msg=data[:200])
     except WebSocketDisconnect:
         log.info("ws_client_disconnected", mission_id=mission_id)
     finally:
@@ -222,10 +235,24 @@ async def ws_handler(websocket: WebSocket):
 
     # Keep alive — relay events or wait for disconnect
     try:
+        import json as _json
         while True:
             data = await websocket.receive_text()
-            # Handle ping
-            if data.strip().lower() in ('ping', '{"type":"ping"}'):
+            # Handle ping — parse JSON properly to handle extra fields (e.g. "ts")
+            # and varying whitespace from different clients (Flutter jsonEncode
+            # produces spaces: {"type": "ping", "ts": ...} which breaks exact matching).
+            _is_ping = False
+            if data.strip().lower() == 'ping':
+                _is_ping = True
+            else:
+                try:
+                    _parsed = _json.loads(data)
+                    if isinstance(_parsed, dict) and _parsed.get('type') == 'ping':
+                        _is_ping = True
+                except Exception:
+                    pass
+
+            if _is_ping:
                 await websocket.send_json({"type": "pong"})
             else:
                 log.debug("ws_handler_msg", msg=data[:200])
