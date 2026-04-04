@@ -520,11 +520,11 @@ async def session_info(request: Request):
     return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
 
 
-# ── Root: serve the main user-facing page ──────────────────────
+# ── Root: serve the login page ─────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    # Legacy: was /app.html — now canonical entry point is /index.html
-    return RedirectResponse(url="/index.html")
+    # Entry point → login page (redirects to /app.html after auth)
+    return RedirectResponse(url="/login.html")
 
 
 # ── Startup : workspace cleanup ────────────────────────────────
