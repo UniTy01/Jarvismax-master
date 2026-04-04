@@ -30,8 +30,8 @@ python main.py
 JARVIS_ADMIN_PASSWORD=<password> bash scripts/verify_boot.sh
 ```
 
-**See [RUNBOOK.md](RUNBOOK.md) for the full setup guide.**
-**See [RUNTIME_TRUTH.md](RUNTIME_TRUTH.md) for current proven capabilities.**
+**See [RUNBOOK.md](docs/RUNBOOK.md) for the full setup guide.**
+**See [RUNTIME_TRUTH.md](docs/RUNTIME_TRUTH.md) for current proven capabilities.**
 
 ---
 
@@ -66,7 +66,7 @@ tests/                → 5700+ passing (Cycle 18 Docker run); 95 CI-gated unit 
 > **Qdrant is required** for the core mission path. Redis, Postgres, n8n, Ollama are optional.
 
 > Voir [ARCHITECTURE.md](ARCHITECTURE.md) pour le schéma complet des couches.
-> Voir [RELEASE_READINESS.md](RELEASE_READINESS.md) pour l'état de maturité actuel.
+> Voir [RELEASE_READINESS.md](docs/RELEASE_READINESS.md) pour l'état de maturité actuel.
 
 ---
 
@@ -280,7 +280,7 @@ docker compose exec ollama ollama list
 
 ## Roadmap évolutive
 
-Voir [ROADMAP.md](ROADMAP.md) pour la roadmap complète.
+Voir [ROADMAP.md](docs/ROADMAP.md) pour la roadmap complète.
 
 Prochaines étapes clés :
 - Synchronisation guards FORBIDDEN_SELF_MODIFY ↔ PROTECTED_FILES
@@ -293,6 +293,8 @@ Prochaines étapes clés :
 | Document | Description |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Schéma complet des couches, pipeline, SI loop |
-| [ROADMAP.md](ROADMAP.md) | Phases complétées et prochaines étapes |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases complétées et prochaines étapes |
 | [CHANGELOG.md](CHANGELOG.md) | Historique des changements |
-| [AUDIT_REPO.md](AUDIT_REPO.md) | Inventaire CANONICAL/LEGACY/ARCHIVE |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Setup, deployment, operations |
+| [docs/RUNTIME_TRUTH.md](docs/RUNTIME_TRUTH.md) | Proven capabilities (updated each cycle) |
+| [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) | État de maturité actuel |

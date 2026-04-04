@@ -1,6 +1,6 @@
 # ROADMAP — Jarvis Max
 
-> Mis à jour le 2026-03-25
+> Mis à jour le 2026-04-04
 
 ---
 
@@ -40,11 +40,20 @@
 - [x] Docs canoniques (ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md)
 - [x] Fix write error logging dans `improvement_memory._save()`
 
+### Phase 7 — API v3 + Mobile (Cycles 7-18)
+- [x] **API v3** — `/api/v3/missions`, `/api/v3/metrics/*`, `/api/v3/skills`, `/api/v3/agents`, `/api/v3/connectors`, `/api/v3/mcp` (convergence.py + modules_v3.py)
+- [x] **Flutter mobile app** — jarvismax_app (iOS/Android), targets API v3
+- [x] **CI pipeline** — GitHub Actions (.github/workflows/), 95 unit tests gated
+- [x] **Telegram supprimé** — voir TELEGRAM_REMOVAL_VERDICT.md
+- [x] **requirements.lock** — 187 packages pinned from live Docker image
+- [x] **`/api/v2/session`** — endpoint role detection pour mobile
+- [x] **5700+ tests** passant en Cycle 18 (run Docker complet)
+
 ---
 
 ## En cours 🔄
 
-- [ ] Première exécution de la boucle SI V1 en production (workspace/self_improvement/ à créer)
+- [ ] MCP servers classification et documentation (PROVEN vs STUB)
 - [ ] Monitoring des cycles d'objectifs en conditions réelles
 
 ---
