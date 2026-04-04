@@ -260,7 +260,7 @@ def test_composio_execute_when_disabled():
 def test_mcp_server_build_without_mcp_sdk():
     """get_mcp_server() raises RuntimeError if mcp SDK is not installed."""
     # Patch _MCP_AVAILABLE to False
-    import mcp.jarvis_mcp_server as srv_module
+    import jarvis_mcp.jarvis_mcp_server as srv_module
 
     original = srv_module._MCP_AVAILABLE
     srv_module._MCP_AVAILABLE = False
