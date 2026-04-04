@@ -109,7 +109,7 @@ def test_settings_mcp_defaults():
 
 def test_qdrant_mcp_registration(fresh_registry, settings_with_qdrant_mcp):
     """Qdrant MCP adapter registers server + tools in registry."""
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp
 
     result = register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
 
@@ -137,7 +137,7 @@ def test_qdrant_mcp_disabled_by_default(fresh_registry):
     """Qdrant MCP registration skipped when flag is off."""
     os.environ.pop("QDRANT_MCP_ENABLED", None)
     from config.settings import Settings
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp
 
     s = Settings()
     result = register_qdrant_mcp(fresh_registry, s)
@@ -148,7 +148,7 @@ def test_qdrant_mcp_disabled_by_default(fresh_registry):
 
 def test_qdrant_mcp_no_double_registration(fresh_registry, settings_with_qdrant_mcp):
     """Qdrant MCP adapter does not double-register."""
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp
 
     r1 = register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
     r2 = register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
@@ -160,7 +160,7 @@ def test_qdrant_mcp_no_double_registration(fresh_registry, settings_with_qdrant_
 
 def test_github_mcp_registration(fresh_registry, settings_with_github_mcp):
     """GitHub MCP adapter registers server + all 5 tools."""
-    from mcp.github_mcp_adapter import register_github_mcp
+    from jarvis_mcp.github_mcp_adapter import register_github_mcp
 
     result = register_github_mcp(fresh_registry, settings_with_github_mcp)
 
@@ -185,7 +185,7 @@ def test_github_mcp_high_risk_tools_require_approval(
     fresh_registry, settings_with_github_mcp
 ):
     """Write tools (create_pr, push_files) require approval."""
-    from mcp.github_mcp_adapter import register_github_mcp
+    from jarvis_mcp.github_mcp_adapter import register_github_mcp
 
     register_github_mcp(fresh_registry, settings_with_github_mcp)
 
@@ -205,7 +205,7 @@ def test_mcp_adapter_resolves_qdrant_tool(
     fresh_registry, settings_with_qdrant_mcp
 ):
     """MCPAdapter can resolve a registered Qdrant tool."""
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp
     from integrations.mcp.mcp_adapter import MCPAdapter
 
     register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
@@ -276,7 +276,7 @@ def test_mcp_server_build_without_mcp_sdk():
 
 def test_qdrant_mcp_unregister(fresh_registry, settings_with_qdrant_mcp):
     """Qdrant MCP unregister removes server and all its tools."""
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp, unregister_qdrant_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp, unregister_qdrant_mcp
 
     register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
     assert fresh_registry.get_server("qdrant-mcp") is not None
@@ -293,7 +293,7 @@ def test_qdrant_mcp_unregister(fresh_registry, settings_with_qdrant_mcp):
 
 def test_find_tools_by_tag(fresh_registry, settings_with_qdrant_mcp):
     """MCPRegistry.find_tools_by_tag works for Qdrant memory tools."""
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp
 
     register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
 
@@ -311,8 +311,8 @@ def test_registry_stats(
     fresh_registry, settings_with_qdrant_mcp, settings_with_github_mcp
 ):
     """MCPRegistry.stats() reflects registered servers and tools."""
-    from mcp.qdrant_mcp_adapter import register_qdrant_mcp
-    from mcp.github_mcp_adapter import register_github_mcp
+    from jarvis_mcp.qdrant_mcp_adapter import register_qdrant_mcp
+    from jarvis_mcp.github_mcp_adapter import register_github_mcp
 
     register_qdrant_mcp(fresh_registry, settings_with_qdrant_mcp)
     register_github_mcp(fresh_registry, settings_with_github_mcp)
