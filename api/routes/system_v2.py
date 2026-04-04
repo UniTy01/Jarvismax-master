@@ -4,9 +4,11 @@ api/routes/system_v2.py — Extended system management endpoints.
 Complements api/routes/system.py with additional system controls.
 Registered in api/main.py as system_v2_router.
 
+NOTE: POST /api/system/mode is intentionally absent here.
+      It is handled exclusively by missions.py (mounted first in main.py).
+
 Endpoints:
   GET/POST /api/system/mode/uncensored
-  POST     /api/system/mode
   GET      /api/v2/decision-memory/stats
   GET      /api/v2/decision-memory/registry
   GET      /api/v2/system/policy-mode
@@ -64,21 +66,6 @@ async def set_uncensored_mode(request: Request, _user: dict = _auth):
         else:
             ms.disable_uncensored()
         return {"ok": True, "uncensored": ms.is_uncensored(), "mode": ms.get_mode().value}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-# ── System Mode ──────────────────────────────────────────────
-
-@router.post("/api/system/mode")
-async def set_system_mode(request: Request, _user: dict = _auth):
-    try:
-        from core.mode_system import get_mode_system
-        body = await request.json()
-        mode = body.get("mode", "")
-        ms = get_mode_system()
-        ok = ms.set_mode(mode)
-        return {"ok": ok, "mode": ms.get_mode().value}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
