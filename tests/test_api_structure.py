@@ -71,8 +71,9 @@ class TestExtractedRouters:
         assert any("self-improve" in p for p in routes)
 
     def test_AS08_system_v2_handlers_present(self):
+        # set_system_mode removed from system_v2 (duplicate) — lives in missions.py
         from api.routes.system_v2 import (
-            get_uncensored_mode, set_uncensored_mode, set_system_mode,
+            get_uncensored_mode, set_uncensored_mode,
             decision_memory_stats, decision_memory_registry,
             get_policy_mode, set_policy_mode, get_capabilities,
             get_recent_metrics, get_knowledge_recent, get_last_plan,
@@ -81,9 +82,10 @@ class TestExtractedRouters:
         )
 
     def test_AS09_si_v2_handlers_present(self):
+        # si_status removed from self_improvement_v2 (duplicate) — lives in self_improvement.py
         from api.routes.self_improvement_v2 import (
             si_get_failures, si_get_proposals, si_run_validation,
-            si_status, get_suggestions, self_improve_run, self_improve_report,
+            get_suggestions, self_improve_run, self_improve_report,
         )
 
 
