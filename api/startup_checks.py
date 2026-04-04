@@ -117,6 +117,64 @@ def run_startup_checks(env: dict | None = None) -> StartupReport:
     return report
 
 
+def register_mcp_adapters(settings=None) -> dict:
+    """
+    Register MCP sidecar adapters into the global MCPRegistry.
+
+    Always fail-open: any exception → log warning, never blocks startup.
+    Call this from the FastAPI startup event after enforce_startup_checks().
+
+    Returns:
+        {"qdrant_mcp": bool, "github_mcp": bool}
+        True means the adapter was registered (flag=true + no error).
+        False means disabled or registration failed.
+    """
+    result: dict = {"qdrant_mcp": False, "github_mcp": False}
+
+    # Load settings if not provided
+    try:
+        if settings is None:
+            from config.settings import get_settings
+            settings = get_settings()
+    except Exception as e:
+        logger.warning("mcp_register_skipped_no_settings", extra={"err": str(e)[:80]})
+        return result
+
+    # Get global MCPRegistry singleton
+    try:
+        from integrations.mcp.mcp_registry import get_mcp_registry
+        registry = get_mcp_registry()
+    except Exception as e:
+        logger.warning("mcp_register_skipped_no_registry", extra={"err": str(e)[:80]})
+        return result
+
+    # ── Qdrant MCP sidecar ──────────────────────────────────────────────
+    try:
+        from mcp.qdrant_mcp_adapter import register_qdrant_mcp
+        registered = register_qdrant_mcp(registry, settings)
+        result["qdrant_mcp"] = registered
+        if registered:
+            logger.info("Startup MCP: qdrant-mcp registered (QDRANT_MCP_ENABLED=true)")
+    except Exception as e:
+        logger.warning(
+            f"Startup MCP: qdrant-mcp registration failed (non-blocking): {e!s:.80}"
+        )
+
+    # ── GitHub MCP sidecar ──────────────────────────────────────────────
+    try:
+        from mcp.github_mcp_adapter import register_github_mcp
+        registered = register_github_mcp(registry, settings)
+        result["github_mcp"] = registered
+        if registered:
+            logger.info("Startup MCP: github-mcp registered (GITHUB_MCP_ENABLED=true)")
+    except Exception as e:
+        logger.warning(
+            f"Startup MCP: github-mcp registration failed (non-blocking): {e!s:.80}"
+        )
+
+    return result
+
+
 def enforce_startup_checks(env: dict | None = None) -> None:
     """
     Run checks and raise RuntimeError if blockers found.
