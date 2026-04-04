@@ -38,7 +38,7 @@ services:
       # Suite de tests (validate.py inclus)
       - ./tests:/app/tests
       # MCP layer (Cycle 1 + 2)
-      - ./mcp:/app/mcp
+      - ./jarvis_mcp:/app/jarvis_mcp
       - ./connectors:/app/connectors
       - ./integrations:/app/integrations
       - ./api:/app/api
