@@ -38,12 +38,26 @@ class ValidateTokenRequest(BaseModel):
 
 
 # ── Auth helper ──
+# NOTE (2026-04-04): helpers now accept either X-Jarvis-Token or the
+# standard Authorization: Bearer header so clients using JWT (admin login)
+# can also call these endpoints without a separate jv- access token.
 
-def _require_admin(x_jarvis_token: Optional[str]) -> dict:
+def _resolve_token(x_jarvis_token: Optional[str], authorization: Optional[str] = None) -> Optional[str]:
+    """Return the best available raw token string from the two possible headers."""
+    from api.token_utils import strip_bearer
+    if x_jarvis_token:
+        return strip_bearer(x_jarvis_token)
+    if authorization:
+        return strip_bearer(authorization)
+    return None
+
+
+def _require_admin(x_jarvis_token: Optional[str], authorization: Optional[str] = None) -> dict:
     """Require admin role for token management."""
-    if not x_jarvis_token:
+    raw = _resolve_token(x_jarvis_token, authorization)
+    if not raw:
         raise HTTPException(status_code=401, detail="Authentication required")
-    user = verify_token(x_jarvis_token)
+    user = verify_token(raw)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token")
     if not has_permission(user.get("role", ""), "manage_tokens"):
@@ -51,11 +65,12 @@ def _require_admin(x_jarvis_token: Optional[str]) -> dict:
     return user
 
 
-def _require_auth(x_jarvis_token: Optional[str]) -> dict:
+def _require_auth(x_jarvis_token: Optional[str], authorization: Optional[str] = None) -> dict:
     """Require any valid auth."""
-    if not x_jarvis_token:
+    raw = _resolve_token(x_jarvis_token, authorization)
+    if not raw:
         raise HTTPException(status_code=401, detail="Authentication required")
-    user = verify_token(x_jarvis_token)
+    user = verify_token(raw)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token")
     return user
@@ -65,9 +80,10 @@ def _require_auth(x_jarvis_token: Optional[str]) -> dict:
 
 @router.post("")
 async def create_token(req: CreateTokenRequest,
-                       x_jarvis_token: Optional[str] = Header(None)):
+                       x_jarvis_token: Optional[str] = Header(None),
+                       authorization: Optional[str] = Header(None)):
     """Create a new access token (admin only). Returns raw token ONCE."""
-    _require_admin(x_jarvis_token)
+    _require_admin(x_jarvis_token, authorization)
     manager = get_token_manager()
     try:
         raw_token, token = manager.create_token(
@@ -93,26 +109,29 @@ async def create_token(req: CreateTokenRequest,
 
 @router.get("")
 async def list_tokens(include_expired: bool = False,
-                      x_jarvis_token: Optional[str] = Header(None)):
+                      x_jarvis_token: Optional[str] = Header(None),
+                      authorization: Optional[str] = Header(None)):
     """List all tokens (admin only). Never returns raw tokens."""
-    _require_admin(x_jarvis_token)
+    _require_admin(x_jarvis_token, authorization)
     manager = get_token_manager()
     return {"tokens": manager.list_tokens(include_expired=include_expired)}
 
 
 @router.get("/stats")
-async def token_stats(x_jarvis_token: Optional[str] = Header(None)):
+async def token_stats(x_jarvis_token: Optional[str] = Header(None),
+                      authorization: Optional[str] = Header(None)):
     """Token system statistics (admin only)."""
-    _require_admin(x_jarvis_token)
+    _require_admin(x_jarvis_token, authorization)
     manager = get_token_manager()
     return manager.get_stats()
 
 
 @router.delete("/{token_id}")
 async def delete_token(token_id: str,
-                       x_jarvis_token: Optional[str] = Header(None)):
+                       x_jarvis_token: Optional[str] = Header(None),
+                       authorization: Optional[str] = Header(None)):
     """Permanently delete a token (admin only)."""
-    _require_admin(x_jarvis_token)
+    _require_admin(x_jarvis_token, authorization)
     manager = get_token_manager()
     if manager.delete_token(token_id):
         return {"status": "deleted", "token_id": token_id}
@@ -121,9 +140,10 @@ async def delete_token(token_id: str,
 
 @router.post("/{token_id}/revoke")
 async def revoke_token(token_id: str,
-                       x_jarvis_token: Optional[str] = Header(None)):
+                       x_jarvis_token: Optional[str] = Header(None),
+                       authorization: Optional[str] = Header(None)):
     """Revoke (disable) a token (admin only)."""
-    _require_admin(x_jarvis_token)
+    _require_admin(x_jarvis_token, authorization)
     manager = get_token_manager()
     if manager.revoke_token(token_id):
         return {"status": "revoked", "token_id": token_id}
@@ -132,9 +152,10 @@ async def revoke_token(token_id: str,
 
 @router.post("/{token_id}/enable")
 async def enable_token(token_id: str,
-                       x_jarvis_token: Optional[str] = Header(None)):
+                       x_jarvis_token: Optional[str] = Header(None),
+                       authorization: Optional[str] = Header(None)):
     """Re-enable a revoked token (admin only)."""
-    _require_admin(x_jarvis_token)
+    _require_admin(x_jarvis_token, authorization)
     manager = get_token_manager()
     if manager.enable_token(token_id):
         return {"status": "enabled", "token_id": token_id}
@@ -143,9 +164,10 @@ async def enable_token(token_id: str,
 
 @router.post("/validate")
 async def validate_token_endpoint(req: ValidateTokenRequest,
-                                  x_jarvis_token: Optional[str] = Header(None)):
+                                  x_jarvis_token: Optional[str] = Header(None),
+                                  authorization: Optional[str] = Header(None)):
     """Validate a token (any authenticated user)."""
-    _require_auth(x_jarvis_token)
+    _require_auth(x_jarvis_token, authorization)
     manager = get_token_manager()
     token = manager.validate_token(req.token)
     if token:

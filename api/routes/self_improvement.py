@@ -174,27 +174,9 @@ async def run_improvement_cycle(_user: CurrentUser = Depends(require_role("admin
         logger.error("run_improvement_cycle error: %s", exc)
         return {"ok": False, "error": str(exc)}
 
-@router.get("/suggestions")
-async def get_suggestions(_user: CurrentUser = Depends(require_role("operator"))):
-    """
-    Returns actionable improvement suggestions based on current weaknesses.
-    Flutter: GET /api/v2/self-improvement/suggestions → {suggestions: [...]}
-    """
-    if not _SI_AVAILABLE:
-        return {"suggestions": [], "ok": False, "error": "module_unavailable"}
-    try:
-        detector = get_weakness_detector()
-        weaknesses = detector.detect()
-        suggestions = [
-            {
-                "domain":         w.domain,
-                "severity":        w.severity,
-                "suggested_focus": w.suggested_focus,
-                "evidence":        w.evidence,
-            }
-            for w in weaknesses
-        ]
-        return {"suggestions": suggestions, "ok": True}
-    except Exception as exc:
-        logger.warning("get_suggestions error: %s", exc)
-        return {"suggestions": [], "ok": False, "error": str(exc)}
+# NOTE: GET /suggestions was removed from this router (2026-04-04).
+# The canonical implementation lives in self_improvement_v2.py at
+# @router.get("/api/v2/self-improvement/suggestions") which is now
+# mounted first and returns the richer {suggestions, count, ok} schema.
+# Keeping this handler here caused a silent route shadow where the older,
+# weaker implementation always won over the v2 version.

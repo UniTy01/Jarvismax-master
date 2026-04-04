@@ -324,6 +324,16 @@ try:
 except Exception as _e:
     log.warning("identity_router_unavailable", err=str(_e))
 
+# NOTE: connectors_router must be mounted BEFORE modules_v3_router.
+# modules_v3 defines GET /api/v3/connectors (bare prefix="/api/v3"),
+# which shadows connectors.py's prefix="/api/v3/connectors" if mounted first.
+# Mounting connectors_router first ensures the real connector registry is served.
+try:
+    from api.routes.connectors import router as connectors_router
+    app.include_router(connectors_router)
+except Exception as _e:
+    log.warning("connectors_router_unavailable", err=str(_e))
+
 try:
     from api.routes.modules_v3 import router as modules_v3_router
     app.include_router(modules_v3_router)
@@ -437,12 +447,6 @@ try:
     app.include_router(venture_router)
 except Exception as _e:
     log.warning("venture_router_unavailable", err=str(_e))
-
-try:
-    from api.routes.connectors import router as connectors_router
-    app.include_router(connectors_router)
-except Exception as _e:
-    log.warning("connectors_router_unavailable", err=str(_e))
 
 try:
     from api.routes.strategy import router as strategy_router

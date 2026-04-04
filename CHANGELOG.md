@@ -4,6 +4,49 @@ Format : `type: description (commit hash)`
 
 ---
 
+## [Pass 35 — Route Coherence & Auth Fixes] — 2026-04-04
+
+### Bugs critiques corrigés (audit complet — 421 tests, 0 échec)
+
+- `fix`: `api/main.py` — **Connectors shadowing** résolu. `connectors_router`
+  (prefix `/api/v3/connectors`) était monté à la ligne 443, **après**
+  `modules_v3_router` (prefix `/api/v3`, définit aussi `GET /connectors`).
+  FastAPI retient le premier router monté → `GET /api/v3/connectors` retournait
+  toujours `{"connectors":[]}` (données vides du modules_v3) au lieu du vrai
+  registre ConnectorRegistry. Correction : `connectors_router` est maintenant
+  monté **avant** `modules_v3_router` avec une note explicative dans le code.
+
+- `fix`: `api/routes/self_improvement.py` — **Route dupliquée supprimée**.
+  `GET /api/v2/self-improvement/suggestions` était définie dans deux fichiers :
+  `self_improvement.py` (ancien handler, weakness detector) et
+  `self_improvement_v2.py` (handler canonique, analyze_patterns + count).
+  L'ancien handler gagnait silencieusement car monté en premier. Supprimé de
+  `self_improvement.py`, remplacé par un commentaire d'explication.
+  Le handler v2 (plus riche : `{suggestions, count, ok}`) est maintenant actif.
+
+- `fix`: `api/routes/token_management.py` — **Auth dual-header** pour
+  `GET /api/v3/tokens/stats` (et tous les endpoints du router). Ces endpoints
+  n'acceptaient que `X-Jarvis-Token` header, ignorant `Authorization: Bearer`.
+  `verify_token()` supporte les deux formats (JWT + `jv-`), mais le header
+  Authorization n'était jamais lu. Correction : ajout de `_resolve_token()`
+  qui fait fallback sur `Authorization` si `X-Jarvis-Token` est absent.
+  Tous les handlers du router mis à jour avec `authorization: Optional[str]`.
+
+### Infrastructure MCP (session précédente)
+
+- `feat`: VPS `jarvis_core` — injection de 2 entrées dans `data/mcp/registry.json`
+  via `core.mcp.mcp_registry._persist()` :
+  - `sidecar-github-mcp` : transport=http, endpoint=`http://github-mcp:3000`, status=enabled
+  - `sidecar-qdrant-mcp` : transport=http, endpoint=`http://qdrant-mcp:8000`, status=enabled
+  Visibles dans `GET /api/v3/mcp/servers` (total: 15 serveurs).
+
+### Qualité
+
+- Tests régression : **236 passés**, 2 skipped, 0 échec
+- Aucun conflit de routes détecté après audit statique complet (50 fichiers)
+
+---
+
 ## [Pass 34 — Security Hardening & Observability Completion] — 2026-03-31
 
 ### Sécurité production (critique)
