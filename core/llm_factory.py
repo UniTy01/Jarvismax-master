@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import contextvars
+import os
 import time
 import structlog
 try:
