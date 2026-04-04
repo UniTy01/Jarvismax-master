@@ -155,6 +155,31 @@ class Settings:
     n8n_basic_auth_user:     str = field(default_factory=lambda: os.environ.get("N8N_BASIC_AUTH_USER", "admin"))
     n8n_basic_auth_password: str = field(default_factory=lambda: os.environ.get("N8N_BASIC_AUTH_PASSWORD", ""))
 
+    # ── MCP Server (expose Jarvis tools via MCP protocol) ────────────────────
+    # MCP_SERVER_ENABLED=true  → démarrer le serveur FastMCP sur MCP_SERVER_PORT
+    # Dépendance : pip install mcp>=1.0.0
+    mcp_server_enabled: bool = field(default_factory=lambda: _b("MCP_SERVER_ENABLED"))
+    mcp_server_host:    str  = field(default_factory=lambda: os.environ.get("MCP_SERVER_HOST", "0.0.0.0"))
+    mcp_server_port:    int  = field(default_factory=lambda: _i("MCP_SERVER_PORT", 8765))
+
+    # ── Qdrant MCP sidecar ────────────────────────────────────────────────────
+    # QDRANT_MCP_ENABLED=true  → enregistrer le sidecar qdrant-mcp dans MCPRegistry
+    # QDRANT_MCP_URL           → endpoint du sidecar (ex: http://qdrant-mcp:8000)
+    qdrant_mcp_enabled: bool = field(default_factory=lambda: _b("QDRANT_MCP_ENABLED"))
+    qdrant_mcp_url:     str  = field(default_factory=lambda: os.environ.get("QDRANT_MCP_URL", "http://qdrant-mcp:8000"))
+
+    # ── Composio connector ────────────────────────────────────────────────────
+    # COMPOSIO_ENABLED=true    → activer le connecteur Composio (250+ intégrations)
+    # COMPOSIO_API_KEY         → clé API Composio (https://app.composio.dev)
+    composio_enabled: bool = field(default_factory=lambda: _b("COMPOSIO_ENABLED"))
+    composio_api_key: str  = field(default_factory=lambda: os.environ.get("COMPOSIO_API_KEY", ""))
+
+    # ── GitHub MCP sidecar ────────────────────────────────────────────────────
+    # GITHUB_MCP_ENABLED=true  → enregistrer le sidecar github-mcp dans MCPRegistry
+    # GITHUB_MCP_URL           → endpoint du sidecar (ex: http://github-mcp:3000)
+    github_mcp_enabled: bool = field(default_factory=lambda: _b("GITHUB_MCP_ENABLED"))
+    github_mcp_url:     str  = field(default_factory=lambda: os.environ.get("GITHUB_MCP_URL", "http://github-mcp:3000"))
+
     # ── Sécurité ──────────────────────────────────────────────
     dry_run:          bool = field(default_factory=lambda: _b("DRY_RUN"))
     max_auto_actions: int  = field(default_factory=lambda: _i("MAX_AUTO_ACTIONS", 25))

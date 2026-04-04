@@ -6,8 +6,13 @@ Always returns structured dict {ok, result, error}.
 Never raises — failure is returned as structured error.
 
 Integration: called by executor.capability_dispatch, not directly.
+
+Observability (Cycle 2 Phase B):
+- Every tool call logs: tool_id, tool_name, server_id, provider, latency_ms, status
+- When LANGFUSE_ENABLED=true: emits a Langfuse span per tool call (never blocks)
 """
 from __future__ import annotations
+import os
 import time
 import asyncio
 from typing import Any, Optional
@@ -76,7 +81,8 @@ class MCPAdapter:
         context: dict,
         t0: float,
     ) -> dict:
-        """HTTP invocation of MCP tool."""
+        """HTTP invocation of MCP tool with structured observability."""
+        provider = (server.metadata or {}).get("provider", server.server_id)
         try:
             import httpx
             url = f"{server.endpoint.rstrip('/')}/invoke"
@@ -91,14 +97,32 @@ class MCPAdapter:
                 data = resp.json()
             ms = int((time.monotonic() - t0) * 1000)
             log.info("mcp_tool_invoked",
-                     tool_id=tool.tool_id, status="ok", ms=ms)
+                     tool_id=tool.tool_id,
+                     tool_name=tool.name,
+                     server_id=server.server_id,
+                     provider=provider,
+                     status="ok",
+                     ms=ms)
+            _trace_mcp_langfuse(tool, server, params, data, ms,
+                                success=True, error=None)
             return {"ok": True, "result": data, "error": None,
                     "tool_id": tool.tool_id, "ms": ms}
         except Exception as exc:
             err = f"{type(exc).__name__}: {exc}"
+            ms = int((time.monotonic() - t0) * 1000)
             # Mark server degraded on connection errors
             if "Connect" in type(exc).__name__ or "Timeout" in type(exc).__name__:
                 self._registry.update_health(server.server_id, "degraded")
+            log.warning("mcp_tool_failed",
+                        tool_id=tool.tool_id,
+                        tool_name=tool.name,
+                        server_id=server.server_id,
+                        provider=provider,
+                        status="error",
+                        ms=ms,
+                        error=err[:120])
+            _trace_mcp_langfuse(tool, server, params, None, ms,
+                                success=False, error=err)
             return self._error(tool.tool_id, err, t0)
 
     async def check_health(self, server_id: str) -> str:
@@ -123,6 +147,52 @@ class MCPAdapter:
     @staticmethod
     def _error(tool_id: str, msg: str, t0: float) -> dict:
         ms = int((time.monotonic() - t0) * 1000)
-        log.warning("mcp_tool_failed", tool_id=tool_id, error=msg, ms=ms)
+        log.warning("mcp_tool_error", tool_id=tool_id, error=msg, ms=ms)
         return {"ok": False, "result": None, "error": msg,
                 "tool_id": tool_id, "ms": ms}
+
+
+# ── Langfuse observability (Phase B) ──────────────────────────────────────────
+
+def _trace_mcp_langfuse(
+    tool: "MCPTool",
+    server: "MCPServer",
+    params: dict,
+    result: Any,
+    ms: int,
+    success: bool,
+    error: Optional[str],
+) -> None:
+    """
+    Emit a Langfuse span for an MCP tool call.
+
+    Only active when LANGFUSE_ENABLED=true. Never raises — observability
+    must never break tool invocations.
+
+    Emitted fields (no secret leakage):
+      - tool_id, tool_name, server_id, provider
+      - latency_ms, success, error (truncated)
+      - params keys only (values may be sensitive)
+    """
+    try:
+        if os.environ.get("LANGFUSE_ENABLED", "false").lower() not in ("1", "true", "yes"):
+            return
+        from langfuse import Langfuse
+        lf = Langfuse()
+        provider = (server.metadata or {}).get("provider", server.server_id)
+        trace = lf.trace(name="mcp_tool_call", metadata={"source": "jarvis_mcp_adapter"})
+        trace.span(
+            name=tool.tool_id,
+            input={"tool": tool.name, "params_keys": list(params.keys())},
+            output={"ok": success, "error": (error or "")[:120]},
+            metadata={
+                "server_id": server.server_id,
+                "provider": provider,
+                "latency_ms": ms,
+                "success": success,
+                "risk_level": tool.risk_level,
+            },
+        )
+        lf.flush()
+    except Exception:
+        pass  # Observability must never break tool invocations

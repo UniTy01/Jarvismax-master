@@ -520,11 +520,11 @@ async def session_info(request: Request):
     return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
 
 
-# ── Root: serve the main user-facing page ──────────────────────
+# ── Root: serve the login page ─────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    # Legacy: was /app.html — now canonical entry point is /index.html
-    return RedirectResponse(url="/index.html")
+    # Entry point → login page (redirects to /app.html after auth)
+    return RedirectResponse(url="/login.html")
 
 
 # ── Startup : workspace cleanup ────────────────────────────────
@@ -581,6 +581,16 @@ async def _on_startup():
         log.info("mission_recovery_complete", **recovery)
     except Exception as exc:
         log.warning("mission_recovery_failed", err=str(exc)[:80])
+
+    # ── MCP sidecar auto-registration (Cycle 2 Phase A) ──────────────────
+    # Fail-open: flags default false, never blocks startup.
+    # Enable with QDRANT_MCP_ENABLED=true / GITHUB_MCP_ENABLED=true in .env
+    try:
+        from api.startup_checks import register_mcp_adapters
+        mcp_result = register_mcp_adapters()
+        log.info("mcp_adapters_startup", **mcp_result)
+    except Exception as exc:
+        log.warning("mcp_adapters_startup_failed", err=str(exc)[:80])
 
 
 @app.on_event("shutdown")

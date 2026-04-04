@@ -710,7 +710,7 @@ class MissionSystem:
         """Stocke le final_output d'une mission. Fail-open."""
         r = self._missions.get(mission_id)
         if r and text and text.strip():
-            r.final_output = text[:3000]
+            r.final_output = text  # no truncation — full response preserved
             r.updated_at   = time.time()
             self._save_mission(r)
 
@@ -775,7 +775,7 @@ class MissionSystem:
 
         # Garde-fou final_output : toujours présent
         if not r.final_output:
-            r.final_output = (result_text or r.summary or r.plan_summary or "")[:2000]
+            r.final_output = result_text or r.summary or r.plan_summary or ""  # no truncation
         if not r.summary:
             r.summary = (r.plan_summary or r.final_output or "")[:500]
 

@@ -64,8 +64,13 @@ sentence-transformers>=3.0.0,<4.0.0
 psutil>=5.9.0          # monitoring mémoire/CPU (ResourceGuard)
 langfuse>=2.0.0,<3.0.0 # traçage LLM optionnel (self-hosted)
 
+# ── MCP (Model Context Protocol) ──────────────────────────────────
+# Official Python SDK — exposes Jarvis tools via MCP protocol (FastMCP)
+# Sidecar: mcp/jarvis_mcp_server.py  (MCP_SERVER_ENABLED=true to activate)
+mcp>=1.0.0,<2.0.0
+
 # ── Workflow / Human-in-loop ───────────────────────────────────────
-langgraph>=0.2.0,<0.3.0  # StateGraph + interrupt() human-in-loop
+langgraph>=0.2.0,<0.4.0  # StateGraph + interrupt() human-in-loop (updated upper bound)
 
 # ── Multimodal (Phase 6) — optional heavy deps ────────────────────
 # openai-whisper          # local STT fallback (~1 GB models)
