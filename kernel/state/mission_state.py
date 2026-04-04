@@ -94,7 +94,7 @@ class MissionContext:
             "status":     self.status.value,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "result":     (self.result or "")[:500],
+            "result":     self.result or "",
             "error":      self.error,
             "metadata":   self.metadata,
         }
