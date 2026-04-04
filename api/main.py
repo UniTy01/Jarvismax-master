@@ -582,6 +582,16 @@ async def _on_startup():
     except Exception as exc:
         log.warning("mission_recovery_failed", err=str(exc)[:80])
 
+    # ── MCP sidecar auto-registration (Cycle 2 Phase A) ──────────────────
+    # Fail-open: flags default false, never blocks startup.
+    # Enable with QDRANT_MCP_ENABLED=true / GITHUB_MCP_ENABLED=true in .env
+    try:
+        from api.startup_checks import register_mcp_adapters
+        mcp_result = register_mcp_adapters()
+        log.info("mcp_adapters_startup", **mcp_result)
+    except Exception as exc:
+        log.warning("mcp_adapters_startup_failed", err=str(exc)[:80])
+
 
 @app.on_event("shutdown")
 async def _on_shutdown():
