@@ -88,6 +88,10 @@ python-docx>=1.0.0,<2.0.0 # DOCX text extraction
 bcrypt>=4.0.0            # Hachage mots de passe (authentification)
 PyJWT>=2.0               # JWT tokens (authentification)
 
+# ── MCP servers (Model Context Protocol) ─────────────────────────
+mcp-server-fetch>=2025.4.0   # HTTP fetch MCP server
+mcp-server-sqlite>=2025.4.0  # SQLite MCP server
+
 # ── Testing ───────────────────────────────────────────────────────
 pytest>=7.0.0
 pytest-asyncio>=0.23

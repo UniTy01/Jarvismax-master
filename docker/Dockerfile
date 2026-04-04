@@ -1,5 +1,10 @@
 # ================================================================
 # JARVIS MAX — Dockerfile (multi-stage production build)
+#
+# Build chain: requirements.txt → pip install → image
+# requirements.lock = exact pinned versions generated from live image
+#   (reference only — regenerate with:
+#    docker run --rm jarvismax-master-jarvis:latest pip freeze > requirements.lock)
 # ================================================================
 
 FROM python:3.12-slim AS builder
@@ -49,9 +54,6 @@ RUN mkdir -p /app/workspace/projects \
              /app/data/modules \
              /app/data/mcp \
              /app/logs
-
-# Ensure critical pip packages are installed
-RUN pip install --no-cache-dir PyJWT>=2.0 mcp-server-fetch mcp-server-sqlite
 
 # Pre-download sentence-transformers model so it's cached in image
 # Eliminates ~120s cold-start delay on first mission
