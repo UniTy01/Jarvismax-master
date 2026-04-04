@@ -72,10 +72,11 @@ class TestExtractedRouters:
 
     def test_AS08_system_v2_handlers_present(self):
         # set_system_mode removed from system_v2 (duplicate) — lives in missions.py
+        # get_capabilities removed from system_v2 (duplicate) — lives in monitoring.py
         from api.routes.system_v2 import (
             get_uncensored_mode, set_uncensored_mode,
             decision_memory_stats, decision_memory_registry,
-            get_policy_mode, set_policy_mode, get_capabilities,
+            get_policy_mode, set_policy_mode,
             get_recent_metrics, get_knowledge_recent, get_last_plan,
             get_tools_registry, test_tool_live, rollback_file,
             health_check,
@@ -151,18 +152,21 @@ class TestBackwardCompat:
         assert "/app.html" in main_src
 
     def test_AS20_task_submit_still_inline(self):
-        """POST /api/v2/task remains in main (orchestration core)."""
+        """POST /api/v2/task is handled by missions_v3_router (missions.py, mounted in main)."""
+        # Route moved from inline stub in main.py to canonical handler in missions.py.
+        # Verify the handler exists there and the router is mounted in main.
+        from api.routes.missions import submit_task
+        assert submit_task
         import inspect
         main_src = inspect.getsource(importlib.import_module("api.main"))
-        assert "/api/v2/task" in main_src
-        assert "async def submit_task" in main_src
+        assert "missions_v3_router" in main_src  # router is mounted
 
     def test_AS21_approve_reject_still_works(self):
-        """Flutter approve/reject endpoints remain."""
-        import inspect
-        main_src = inspect.getsource(importlib.import_module("api.main"))
-        assert "approve_task" in main_src
-        assert "reject_task" in main_src
+        """Flutter approve/reject endpoints handled by missions_v3_router."""
+        # Moved from stubs in main.py to canonical handlers in missions.py.
+        from api.routes.missions import approve_task, reject_task
+        assert approve_task
+        assert reject_task
 
     def test_AS22_health_endpoint_available(self):
         """Health check accessible (either main or system_v2)."""
