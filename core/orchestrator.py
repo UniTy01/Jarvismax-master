@@ -436,6 +436,15 @@ class JarvisOrchestrator:
         session.task_mode    = decision.mode
         session.needs_actions = decision.needs_actions
 
+        # 1b. Short-circuit: if TaskRouter decided CHAT, skip the full pipeline
+        # and call _run_chat() directly (direct LLM call, ~1s instead of 5+ min).
+        if decision.mode == TaskMode.CHAT:
+            log.info("orchestrator_chat_shortcircuit",
+                     sid=session.session_id,
+                     reason=getattr(decision, "reason", ""),
+                     input_len=len(session.user_input.strip()))
+            return await self._run_chat(session, emit)
+
         # 2. Memoire en premier
         await emit("Rappel memoire...")
         await self.agents.run("vault-memory", session)

@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/mission.dart';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
+import '../theme/design_system.dart';
 import '../widgets/cyber_card.dart';
 import '../widgets/mission_status_theme.dart';
 import '../widgets/status_badge.dart';
@@ -128,24 +128,24 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   Color get _accentColor {
     switch (_mission.status) {
       case 'DONE':
-        return JvColors.green;
+        return JDS.green;
       case 'FAILED':
-        return JvColors.red;
+        return JDS.red;
       case 'REJECTED':
         return const Color(0xFF9C27B0);
       case 'RUNNING':
-        return JvColors.green;
+        return JDS.green;
       case 'REVIEW':
-        return JvColors.orange;
+        return JDS.amber;
       case 'PLANNED':
         return const Color(0xFF2196F3);
       case 'BLOCKED':
-        return JvColors.red;
+        return JDS.red;
       case 'APPROVED':
       case 'EXECUTING':
-        return JvColors.cyan;
+        return JDS.blue;
       default:
-        return JvColors.textMut;
+        return JDS.textMuted;
     }
   }
 
@@ -203,14 +203,14 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       Widget nodeChild;
 
       if (isFailedNode) {
-        nodeColor = JvColors.red;
+        nodeColor = JDS.red;
         nodeChild = const Icon(Icons.close, size: 11, color: Colors.white);
       } else if (completed) {
-        nodeColor = JvColors.cyan;
+        nodeColor = JDS.blue;
         nodeChild =
             const Icon(Icons.check, size: 11, color: Colors.black);
       } else if (current && _mission.status == 'RUNNING') {
-        nodeColor = JvColors.green;
+        nodeColor = JDS.green;
         nodeChild = const SizedBox(
           width: 11,
           height: 11,
@@ -248,7 +248,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                 border: Border.all(
                   color: (completed || current || isFailedNode)
                       ? nodeColor
-                      : JvColors.border,
+                      : JDS.borderDefault,
                   width: current ? 2 : 1,
                 ),
                 shape: BoxShape.circle,
@@ -261,8 +261,8 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               style: TextStyle(
                 fontSize: 8,
                 color: (completed || current)
-                    ? JvColors.textSec
-                    : JvColors.textMut,
+                    ? JDS.textSecondary
+                    : JDS.textMuted,
                 fontWeight:
                     current ? FontWeight.w700 : FontWeight.normal,
               ),
@@ -278,8 +278,8 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               height: 2,
               margin: const EdgeInsets.only(bottom: 18),
               color: currentIdx > i
-                  ? JvColors.cyan.withValues(alpha: 0.5)
-                  : JvColors.border,
+                  ? JDS.blue.withValues(alpha: 0.5)
+                  : JDS.borderDefault,
             ),
           ),
         );
@@ -329,33 +329,33 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: JvColors.surface,
+        color: JDS.bgSurface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: JvColors.border),
+        border: Border.all(color: JDS.borderDefault),
       ),
       child: Row(
         children: [
           if (duration != null) ...[
-            const Icon(Icons.timer_outlined, size: 13, color: JvColors.textMut),
+            const Icon(Icons.timer_outlined, size: 13, color: JDS.textMuted),
             const SizedBox(width: 4),
             Text(
               'Durée: $duration',
-              style: const TextStyle(color: JvColors.textSec, fontSize: 11),
+              style: const TextStyle(color: JDS.textSecondary, fontSize: 11),
             ),
             const SizedBox(width: 16),
           ],
           if (toolCount > 0) ...[
-            const Icon(Icons.build_outlined, size: 13, color: JvColors.textMut),
+            const Icon(Icons.build_outlined, size: 13, color: JDS.textMuted),
             const SizedBox(width: 4),
             Text(
               'Outils: $toolCount',
-              style: const TextStyle(color: JvColors.textSec, fontSize: 11),
+              style: const TextStyle(color: JDS.textSecondary, fontSize: 11),
             ),
             const SizedBox(width: 16),
           ],
           if (traceShort != null) ...[
             const Icon(Icons.location_on_outlined,
-                size: 13, color: JvColors.textMut),
+                size: 13, color: JDS.textMuted),
             const SizedBox(width: 4),
             GestureDetector(
               onTap: () {
@@ -371,7 +371,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               child: Text(
                 'Trace: $traceShort',
                 style: const TextStyle(
-                  color: JvColors.cyan,
+                  color: JDS.blue,
                   fontSize: 11,
                   decoration: TextDecoration.underline,
                 ),
@@ -392,11 +392,11 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       case 'plan':
         return const Color(0xFF009688);
       case 'reflect':
-        return JvColors.orange;
+        return JDS.amber;
       case 'decision':
         return const Color(0xFF9C27B0);
       default:
-        return JvColors.textMut;
+        return JDS.textMuted;
     }
   }
 
@@ -407,26 +407,26 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: JvColors.surface,
+        color: JDS.bgSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: JvColors.border),
+        border: Border.all(color: JDS.borderDefault),
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
         leading: const Icon(Icons.psychology_outlined,
-            color: JvColors.cyan, size: 18),
+            color: JDS.blue, size: 18),
         title: Text(
           'Raisonnement (${steps.length} étapes)',
           style: const TextStyle(
-            color: JvColors.textPrim,
+            color: JDS.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
         ),
         initiallyExpanded: false,
-        iconColor: JvColors.textMut,
-        collapsedIconColor: JvColors.textMut,
+        iconColor: JDS.textMuted,
+        collapsedIconColor: JDS.textMuted,
         children: steps.map((step) {
           final phaseColor = _reasoningPhaseColor(step.phase);
           return Padding(
@@ -458,7 +458,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                   child: Text(
                     step.content,
                     style: const TextStyle(
-                        color: JvColors.textSec, fontSize: 12, height: 1.4),
+                        color: JDS.textSecondary, fontSize: 12, height: 1.4),
                   ),
                 ),
               ],
@@ -474,15 +474,15 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   Color _actionStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'success':
-        return JvColors.green;
+        return JDS.green;
       case 'failed':
-        return JvColors.red;
+        return JDS.red;
       case 'approval_required':
-        return JvColors.orange;
+        return JDS.amber;
       case 'blocked':
         return const Color(0xFF9C27B0);
       default:
-        return JvColors.textMut;
+        return JDS.textMuted;
     }
   }
 
@@ -493,26 +493,26 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: JvColors.surface,
+        color: JDS.bgSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: JvColors.border),
+        border: Border.all(color: JDS.borderDefault),
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
         leading: const Icon(Icons.terminal_outlined,
-            color: JvColors.cyan, size: 18),
+            color: JDS.blue, size: 18),
         title: Text(
           'Actions exécutées (${steps.length})',
           style: const TextStyle(
-            color: JvColors.textPrim,
+            color: JDS.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
         ),
         initiallyExpanded: false,
-        iconColor: JvColors.textMut,
-        collapsedIconColor: JvColors.textMut,
+        iconColor: JDS.textMuted,
+        collapsedIconColor: JDS.textMuted,
         children: steps.map((action) {
           final statusColor = _actionStatusColor(action.status);
           return Padding(
@@ -522,13 +522,13 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.code, size: 13, color: JvColors.textMut),
+                    const Icon(Icons.code, size: 13, color: JDS.textMuted),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         action.tool,
                         style: const TextStyle(
-                          color: JvColors.textPrim,
+                          color: JDS.textPrimary,
                           fontSize: 12,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w600,
@@ -558,7 +558,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       Text(
                         '${action.durationSeconds!.toStringAsFixed(1)}s',
                         style: const TextStyle(
-                            color: JvColors.textMut, fontSize: 10),
+                            color: JDS.textMuted, fontSize: 10),
                       ),
                     ],
                   ],
@@ -569,22 +569,22 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                     margin: const EdgeInsets.only(top: 5),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: JvColors.red.withValues(alpha: 0.07),
+                      color: JDS.red.withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                          color: JvColors.red.withValues(alpha: 0.25)),
+                          color: JDS.red.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(Icons.error_outline,
-                            size: 12, color: JvColors.red),
+                            size: 12, color: JDS.red),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             action.errorMessage!,
                             style: const TextStyle(
-                                color: JvColors.red,
+                                color: JDS.red,
                                 fontSize: 11,
                                 height: 1.3),
                           ),
@@ -627,21 +627,21 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: JvColors.red.withValues(alpha: 0.06),
+        color: JDS.red.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: JvColors.red.withValues(alpha: 0.35)),
+        border: Border.all(color: JDS.red.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.error_outline, color: JvColors.red, size: 16),
+              Icon(Icons.error_outline, color: JDS.red, size: 16),
               SizedBox(width: 8),
               Text(
                 'MISSION ÉCHOUÉE',
                 style: TextStyle(
-                  color: JvColors.red,
+                  color: JDS.red,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1,
@@ -653,7 +653,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
             const SizedBox(height: 8),
             Text(
               'Phase échouée: $failedPhase',
-              style: const TextStyle(color: JvColors.textSec, fontSize: 12),
+              style: const TextStyle(color: JDS.textSecondary, fontSize: 12),
             ),
           ],
           if (errorMessage != null && errorMessage.isNotEmpty) ...[
@@ -661,14 +661,14 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
             SelectableText(
               errorMessage,
               style: const TextStyle(
-                  color: JvColors.textSec, fontSize: 12, height: 1.4),
+                  color: JDS.textSecondary, fontSize: 12, height: 1.4),
             ),
           ],
           const SizedBox(height: 10),
           const Text(
             '→ Réessayez avec une description plus précise',
             style: TextStyle(
-              color: JvColors.orange,
+              color: JDS.amber,
               fontSize: 11,
               fontStyle: FontStyle.italic,
             ),
@@ -690,7 +690,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       appBar: AppBar(
         title: const Text('DÉTAIL MISSION'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: JvColors.cyan),
+          icon: const Icon(Icons.arrow_back, color: JDS.blue),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -699,24 +699,24 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
           // ── Phase 7: Progress indicator ─────────────────────────────────
           if (showProgress)
             LinearProgressIndicator(
-              backgroundColor: JvColors.border,
+              backgroundColor: JDS.borderDefault,
               color: _accentColor,
             ),
           if (elapsed.isNotEmpty)
             Container(
               width: double.infinity,
-              color: JvColors.surface,
+              color: JDS.bgSurface,
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               child: Row(
                 children: [
                   const Icon(Icons.hourglass_top,
-                      size: 12, color: JvColors.textMut),
+                      size: 12, color: JDS.textMuted),
                   const SizedBox(width: 6),
                   Text(
                     elapsed,
                     style: const TextStyle(
-                        color: JvColors.textMut, fontSize: 11),
+                        color: JDS.textMuted, fontSize: 11),
                   ),
                 ],
               ),
@@ -739,7 +739,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                             child: Text(
                               _mission.userInput,
                               style: const TextStyle(
-                                color: JvColors.textPrim,
+                                color: JDS.textPrimary,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -778,7 +778,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                     child: Row(
                       children: [
                         const Text('Réponse de Jarvis', style: TextStyle(
-                          color: JvColors.textMut, fontSize: 10,
+                          color: JDS.textMuted, fontSize: 10,
                           fontWeight: FontWeight.w700, letterSpacing: 1.2,
                         )),
                         const Spacer(),
@@ -796,15 +796,15 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: JvColors.cyan.withValues(alpha: 0.1),
+                                color: JDS.blue.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: JvColors.cyan.withValues(alpha: 0.3)),
+                                border: Border.all(color: JDS.blue.withValues(alpha: 0.3)),
                               ),
                               child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(Icons.copy_outlined, size: 12, color: JvColors.cyan),
+                                Icon(Icons.copy_outlined, size: 12, color: JDS.blue),
                                 SizedBox(width: 4),
                                 Text('Copier', style: TextStyle(
-                                  color: JvColors.cyan, fontSize: 11, fontWeight: FontWeight.w600,
+                                  color: JDS.blue, fontSize: 11, fontWeight: FontWeight.w600,
                                 )),
                               ]),
                             ),
@@ -817,10 +817,10 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: JvColors.cyan.withValues(alpha: 0.06),
+                      color: JDS.blue.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color: JvColors.cyan.withValues(alpha: 0.25)),
+                          color: JDS.blue.withValues(alpha: 0.25)),
                     ),
                     child: SelectableText(
                       _mission.finalOutput.isNotEmpty
@@ -828,8 +828,8 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                           : 'Aucune réponse disponible pour cette mission.',
                       style: TextStyle(
                         color: _mission.finalOutput.isNotEmpty
-                            ? JvColors.textPrim
-                            : JvColors.textMut,
+                            ? JDS.textPrimary
+                            : JDS.textMuted,
                         fontSize: 14,
                         height: 1.55,
                       ),
@@ -863,7 +863,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                           Text(
                             'Décision : ${_mission.advisoryDecision}',
                             style: const TextStyle(
-                              color: JvColors.textSec,
+                              color: JDS.textSecondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -892,7 +892,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                               _DecisionChip(
                                   'Complexité',
                                   _mission.complexity.toUpperCase(),
-                                  JvColors.textSec),
+                                  JDS.textSecondary),
                             if (_mission.complexity.isNotEmpty)
                               const SizedBox(width: 8),
                             _DecisionChip(
@@ -959,7 +959,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       spacing: 6,
                       runSpacing: 4,
                       children: _mission.selectedAgents
-                          .map((a) => _AgentChip(a, JvColors.cyan))
+                          .map((a) => _AgentChip(a, JDS.blue))
                           .toList(),
                     ),
                   ),
@@ -969,14 +969,14 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       child: Text(
                         'Agents ignorés (${_mission.skippedAgents.length})',
                         style: const TextStyle(
-                            color: JvColors.textMut, fontSize: 11),
+                            color: JDS.textMuted, fontSize: 11),
                       ),
                     ),
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
                       children: _mission.skippedAgents
-                          .map((a) => _AgentChip(a, JvColors.textMut))
+                          .map((a) => _AgentChip(a, JDS.textMuted))
                           .toList(),
                     ),
                     const SizedBox(height: 8),
@@ -990,7 +990,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                     child: Text(
                       _mission.planSummary,
                       style: const TextStyle(
-                          color: JvColors.textSec, fontSize: 13),
+                          color: JDS.textSecondary, fontSize: 13),
                     ),
                   ),
                 ],
@@ -1031,13 +1031,13 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Icon(Icons.info_outline,
-                                    size: 13, color: JvColors.textMut),
+                                    size: 13, color: JDS.textMuted),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     _mission.approvalReason!,
                                     style: const TextStyle(
-                                      color: JvColors.textMut,
+                                      color: JDS.textMuted,
                                       fontSize: 11,
                                       fontStyle: FontStyle.italic,
                                     ),
@@ -1049,7 +1049,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                         Text(
                           '${_mission.actionIds.length} action(s)',
                           style: const TextStyle(
-                            color: JvColors.textSec,
+                            color: JDS.textSecondary,
                             fontSize: 12,
                           ),
                         ),
@@ -1064,17 +1064,17 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: JvColors.border,
+                                      color: JDS.borderDefault,
                                       borderRadius:
                                           BorderRadius.circular(4),
                                       border: Border.all(
-                                          color: JvColors.cyan
+                                          color: JDS.blue
                                               .withValues(alpha: 0.2)),
                                     ),
                                     child: Text(
                                       id,
                                       style: const TextStyle(
-                                        color: JvColors.cyan,
+                                        color: JDS.blue,
                                         fontSize: 10,
                                         fontFamily: 'monospace',
                                       ),
@@ -1090,9 +1090,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                                 size: 16),
                             label: const Text('VOIR LES ACTIONS'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: JvColors.cyan,
+                              foregroundColor: JDS.blue,
                               side:
-                                  const BorderSide(color: JvColors.cyan),
+                                  const BorderSide(color: JDS.blue),
                               padding: const EdgeInsets.symmetric(
                                   vertical: 12),
                             ),
@@ -1118,7 +1118,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                     child: Text(
                       _mission.note,
                       style: const TextStyle(
-                          color: JvColors.textSec, fontSize: 12),
+                          color: JDS.textSecondary, fontSize: 12),
                     ),
                   ),
                 ],
@@ -1134,7 +1134,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: JvColors.cyan,
+                          color: JDS.blue,
                         ),
                       ),
                     ),
@@ -1147,13 +1147,13 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                         const Text(
                           'Afficher les réponses complètes',
                           style: TextStyle(
-                              color: JvColors.textSec, fontSize: 13),
+                              color: JDS.textSecondary, fontSize: 13),
                         ),
                         Switch(
                           value: _showOutputs,
                           onChanged: (v) =>
                               setState(() => _showOutputs = v),
-                          activeColor: JvColors.cyan,
+                          activeColor: JDS.blue,
                         ),
                       ],
                     ),
@@ -1164,14 +1164,14 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: JvColors.surface,
+                          color: JDS.bgSurface,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: JvColors.border),
+                          border: Border.all(color: JDS.borderDefault),
                         ),
                         child: const Text(
                           'Aucune réponse disponible pour cette mission.',
                           style: TextStyle(
-                              color: JvColors.textMut, fontSize: 12),
+                              color: JDS.textMuted, fontSize: 12),
                         ),
                       )
                     else
@@ -1212,7 +1212,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: JvColors.textMut,
+                color: JDS.textMuted,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1221,7 +1221,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: JvColors.textSec, fontSize: 11),
+              style: const TextStyle(color: JDS.textSecondary, fontSize: 11),
             ),
           ),
         ],
@@ -1237,10 +1237,10 @@ class _ScoreBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = score >= 7.5
-        ? JvColors.green
+        ? JDS.green
         : score >= 4.0
-            ? JvColors.orange
-            : JvColors.red;
+            ? JDS.amber
+            : JDS.red;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -1278,9 +1278,9 @@ class _PlanStepCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: JvColors.surface,
+        color: JDS.bgSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: JvColors.border),
+        border: Border.all(color: JDS.borderDefault),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1290,14 +1290,14 @@ class _PlanStepCard extends StatelessWidget {
             height: 28,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: JvColors.cyan.withValues(alpha: 0.12),
+              color: JDS.blue.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: JvColors.cyan.withValues(alpha: 0.4)),
+              border: Border.all(color: JDS.blue.withValues(alpha: 0.4)),
             ),
             child: Text(
               '${index + 1}',
               style: const TextStyle(
-                color: JvColors.cyan,
+                color: JDS.blue,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),
@@ -1311,7 +1311,7 @@ class _PlanStepCard extends StatelessWidget {
                 Text(
                   desc,
                   style: const TextStyle(
-                    color: JvColors.textPrim,
+                    color: JDS.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1343,15 +1343,15 @@ class _IssueCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: JvColors.orange.withValues(alpha: 0.07),
+        color: JDS.amber.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: JvColors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: JDS.amber.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.warning_amber_outlined,
-              color: JvColors.orange, size: 16),
+              color: JDS.amber, size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1360,13 +1360,13 @@ class _IssueCard extends StatelessWidget {
                 if (type.isNotEmpty)
                   Text(type,
                       style: const TextStyle(
-                        color: JvColors.orange,
+                        color: JDS.amber,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       )),
                 Text(msg,
                     style:
-                        const TextStyle(color: JvColors.textSec, fontSize: 12)),
+                        const TextStyle(color: JDS.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -1391,14 +1391,14 @@ class _RiskCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: JvColors.red.withValues(alpha: 0.07),
+        color: JDS.red.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: JvColors.red.withValues(alpha: 0.3)),
+        border: Border.all(color: JDS.red.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_outlined, color: JvColors.red, size: 16),
+          const Icon(Icons.shield_outlined, color: JDS.red, size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1408,7 +1408,7 @@ class _RiskCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(desc,
                     style:
-                        const TextStyle(color: JvColors.textSec, fontSize: 12)),
+                        const TextStyle(color: JDS.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -1429,32 +1429,32 @@ class _AgentOutputTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: JvColors.surface,
+        color: JDS.bgSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: JvColors.border),
+        border: Border.all(color: JDS.borderDefault),
       ),
       child: ExpansionTile(
         tilePadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         leading: const Icon(Icons.smart_toy_outlined,
-            color: JvColors.cyan, size: 18),
+            color: JDS.blue, size: 18),
         title: Text(
           agentId,
           style: const TextStyle(
-            color: JvColors.cyan,
+            color: JDS.blue,
             fontSize: 13,
             fontWeight: FontWeight.w700,
             fontFamily: 'monospace',
           ),
         ),
-        iconColor: JvColors.textMut,
-        collapsedIconColor: JvColors.textMut,
+        iconColor: JDS.textMuted,
+        collapsedIconColor: JDS.textMuted,
         children: [
           SelectableText(
             output,
             style: const TextStyle(
-              color: JvColors.textSec,
+              color: JDS.textSecondary,
               fontSize: 12,
               height: 1.5,
             ),
@@ -1483,7 +1483,7 @@ class _DecisionChip extends StatelessWidget {
       child: Column(
         children: [
           Text(label,
-              style: const TextStyle(color: JvColors.textMut, fontSize: 9)),
+              style: const TextStyle(color: JDS.textMuted, fontSize: 9)),
           const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
@@ -1520,15 +1520,15 @@ class _AgentChip extends StatelessWidget {
 }
 
 Color _riskColor(int score) {
-  if (score <= 3) return JvColors.green;
-  if (score <= 6) return JvColors.orange;
-  return JvColors.red;
+  if (score <= 3) return JDS.green;
+  if (score <= 6) return JDS.amber;
+  return JDS.red;
 }
 
 Color _confidenceColor(double score) {
-  if (score >= 0.70) return JvColors.green;
-  if (score >= 0.40) return JvColors.orange;
-  return JvColors.red;
+  if (score >= 0.70) return JDS.green;
+  if (score >= 0.40) return JDS.amber;
+  return JDS.red;
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────────────

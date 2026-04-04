@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../theme/design_system.dart';
 
-/// Card avec bordure cyber optionnelle et accentuation gauche
+/// Card avec accentuation gauche optionnelle — JDS design system
 class CyberCard extends StatelessWidget {
   final Widget child;
   final Color? accentColor;
@@ -23,16 +23,16 @@ class CyberCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 5),
         decoration: BoxDecoration(
-          color: JvColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: JvColors.border),
+          color: JDS.bgElevated,
+          borderRadius: BorderRadius.circular(JDS.radiusMd),
+          border: Border.all(color: JDS.borderDefault),
           gradient: accentColor != null
               ? LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    accentColor!.withValues(alpha:0.08),
-                    JvColors.card,
+                    accentColor!.withValues(alpha: 0.08),
+                    JDS.bgElevated,
                   ],
                 )
               : null,
@@ -46,8 +46,8 @@ class CyberCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: accentColor,
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomLeft: Radius.circular(12),
+                    topLeft: Radius.circular(JDS.radiusMd),
+                    bottomLeft: Radius.circular(JDS.radiusMd),
                   ),
                 ),
               ),
@@ -76,7 +76,7 @@ class SectionLabel extends StatelessWidget {
       child: Text(
         text.toUpperCase(),
         style: const TextStyle(
-          color: JvColors.textMut,
+          color: JDS.textMuted,
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 2,
@@ -86,7 +86,7 @@ class SectionLabel extends StatelessWidget {
   }
 }
 
-/// Score bar cyan
+/// Score bar
 class ScoreBar extends StatelessWidget {
   final double score; // 0 → 10
   final double height;
@@ -97,10 +97,10 @@ class ScoreBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = (score / 10).clamp(0.0, 1.0);
     final color = score >= 7.5
-        ? JvColors.green
+        ? JDS.green
         : score >= 4.0
-            ? JvColors.orange
-            : JvColors.red;
+            ? JDS.amber
+            : JDS.red;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -111,7 +111,7 @@ class ScoreBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(height),
                 child: LinearProgressIndicator(
                   value: pct,
-                  backgroundColor: JvColors.border,
+                  backgroundColor: JDS.borderDefault,
                   color: color,
                   minHeight: height,
                 ),

@@ -253,6 +253,16 @@ class TaskRouter:
         if explicit_mode:
             try:
                 mode = TaskMode(explicit_mode)
+                # Guard: even with explicit mode=auto, short conversational inputs
+                # (greetings, questions ≤ 30 chars) must go to CHAT — never the
+                # full 7-agent pipeline. Prevents 5+ minute wait on "bonjour".
+                if mode == TaskMode.AUTO and len(user_input.strip()) <= 30:
+                    log.info("task_router_short_override",
+                             original_mode=explicit_mode, len=len(user_input.strip()))
+                    return self._make(TaskMode.CHAT, user_input,
+                                      reason="heuristic:short_override_auto",
+                                      confidence=0.9,
+                                      uncensored_mode=uncensored_mode)
                 return self._make(mode, user_input,
                                   reason=f"explicit:{explicit_mode}",
                                   uncensored_mode=uncensored_mode)

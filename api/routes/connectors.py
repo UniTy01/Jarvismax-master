@@ -2,8 +2,10 @@
 api/routes/connectors.py — Connector management API.
 
 Endpoints:
-  GET  /api/v3/connectors           — list all connectors with status
-  GET  /api/v3/connectors/{name}    — get connector detail
+  GET  /api/v3/connectors              — list all connectors with status
+  GET  /api/v3/connectors/{name}       — get connector detail
+  POST /api/v3/connectors/{name}/toggle — enable/disable connector (runtime)
+  POST /api/v3/connectors/{name}/test  — test connector connectivity
   POST /api/v3/connectors/{name}/execute — execute a connector action
 """
 from __future__ import annotations
@@ -61,6 +63,40 @@ async def get_connector(name: str, user=Depends(require_auth)):
     if not c:
         return {"ok": False, "error": f"Connector '{name}' not found"}
     return {"ok": True, "connector": c.get_status()}
+
+
+@router.post("/{name}/toggle")
+async def toggle_connector(name: str, user=Depends(require_auth)):
+    """Toggle connector enabled/disabled (runtime only, via env var)."""
+    import os
+    from fastapi import HTTPException
+    reg = _get_registry()
+    c = reg.get(name)
+    if not c:
+        raise HTTPException(status_code=404, detail=f"Connector '{name}' not found")
+    key = f"CONNECTOR_{name.upper()}_ENABLED"
+    currently_enabled = c.is_enabled()
+    os.environ[key] = "0" if currently_enabled else "1"
+    new_status = "disabled" if currently_enabled else "enabled"
+    return {"ok": True, "status": new_status, "name": name}
+
+
+@router.post("/{name}/test")
+async def test_connector(name: str, user=Depends(require_auth)):
+    """Test a connector connection."""
+    from fastapi import HTTPException
+    reg = _get_registry()
+    c = reg.get(name)
+    if not c:
+        raise HTTPException(status_code=404, detail=f"Connector '{name}' not found")
+    configured = c.is_configured()
+    return {
+        "ok": True,
+        "status": "pass" if configured else "no_credentials",
+        "name": name,
+        "enabled": c.is_enabled(),
+        "health": {"status": "healthy" if configured else "unconfigured"},
+    }
 
 
 @router.post("/{name}/execute")

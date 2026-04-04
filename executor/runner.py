@@ -144,6 +144,10 @@ class ActionResult:  # canonical name for shell/file action results
         return self.error is not None and "whitelist" in (self.error or "").lower()
 
 
+# Alias: runner.py used ExecutionResult but only ActionResult is defined here
+ExecutionResult = ActionResult
+
+
 class ActionExecutor:
 
     def __init__(self, settings=None):
