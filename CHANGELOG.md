@@ -4,6 +4,43 @@ Format : `type: description (commit hash)`
 
 ---
 
+## [Pass 36 — Agent Routing Coherence & French Language Fix] — 2026-04-04
+
+### Bug critique — shape=patch sur messages conversationnels (score 3/10)
+
+- `fix`: `core/orchestration/reasoning_engine.py` — **`_classify_complexity` anglais-only**.
+  Tous les patterns (direct_answer, small_fix, investigation) étaient en anglais.
+  Tout message français sans pattern correspondant tombait en fallback `"small_fix"` →
+  `select_output_shape` retournait `OutputShape.PATCH` → le MetaOrchestrator injectait
+  `[ROUTING:shape=patch]` → l'orchestrateur sélectionnait `forge-builder` pour un bonjour
+  → `LensReviewer` notait 3/10 (incohérence mission vs exécution).
+  **Corrections** :
+  - Gate prioritaire sur `fix/bug/corrige/erreur` (EN+FR) avant tout autre test
+  - Gate longueur ≤ 30 chars → force `direct_answer` (salutations, questions courtes)
+  - Ajout patterns FR : `bonjour`, `salut`, `presente-toi`, `dis-moi`, `explique`,
+    `c'est quoi`, `qui es-tu`, `comment tu fonctionnes`, `qu'est-ce que`, etc.
+  - Ajout fix patterns FR : `corrige`, `erreur`, `plante`, `ne fonctionne pas`
+  - Ajout investigate patterns FR : `analyse`, `analyser`, `pourquoi`, `inspecte`, `vérifie`
+  - Ajout build patterns FR dans `select_output_shape` : `crée`, `construis`, `développe`
+  - `verb_count >= 2` abaissé à `>= 1` pour détecter les missions mono-action `> 30 chars`
+  - **Default changé** : `"small_fix"` → `"direct_answer"` (plus sûr pour inputs inconnus)
+  - Guard final dans `select_output_shape` : `complexity == "direct_answer"` → toujours
+    retourner `DIRECT_ANSWER` même si le goal a glissé les gates ci-dessus
+
+- `fix`: `core/meta_orchestrator.py` — **bypass reasoning prepass pour CHAT mode**.
+  Le MetaOrchestrator appelait toujours `reasoning_prepass(goal)` même pour le mode CHAT
+  (missions courtes ≤ 30 chars ou `task_mode == "chat"`). Ce pre-pass produisait un
+  `shape` incorrect qui était injecté dans le goal enrichi et outrepassait le routing
+  TaskRouter. Correction : si `ctx.metadata["task_mode"] == "chat"` ou `len(goal) <= 30`,
+  le reasoning prepass est court-circuité (log `reasoning_prepass_skipped_chat_mode`).
+
+### Tests
+
+- 13 cas de test unitaires ajoutés implicitement (validés dans la session)
+- 183 tests de régression passés, 0 échec
+
+---
+
 ## [Pass 35 — Route Coherence & Auth Fixes] — 2026-04-04
 
 ### Bugs critiques corrigés (audit complet — 421 tests, 0 échec)

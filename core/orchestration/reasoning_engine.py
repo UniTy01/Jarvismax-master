@@ -117,42 +117,77 @@ def frame_problem(
 
 def _classify_complexity(goal: str, words: set) -> str:
     """Determine if this needs a direct answer, small fix, investigation, or multi-step plan."""
-    # Direct answer indicators
-    direct_patterns = [
+
+    # ── Gate 0 : fix/bug patterns détectés EN PREMIER (priorité absolue) ─────
+    # Ces patterns doivent être testés avant le gate de longueur pour que
+    # "fix this bug" (12 chars) ne soit pas capturé comme direct_answer.
+    # NOTE (2026-04-04): réordonné — anciennement après le gate de longueur.
+    _fix_patterns_early = [
+        r"\bfix\b", r"\bbug\b", r"\berror\b", r"\bcrash\b",
+        r"\bbroken\b", r"\bnot work", r"\b404\b", r"\b401\b",
+        r"\bcorrige\b", r"\berreur\b", r"\bplante\b",
+        r"\bne\s+fonctionne\s+pas\b", r"\bne\s+marche\s+pas\b",
+    ]
+    if (any(re.search(p, goal, re.IGNORECASE) for p in _fix_patterns_early)
+            and len(goal) < 200):
+        return "small_fix"
+
+    # ── Gate 1 : messages courts / salutations (FR + EN) ──────────────────
+    # Un message ≤ 30 chars sans verbe d'action fort (déjà testé ci-dessus)
+    # est forcément une question directe ou une salutation — jamais un patch.
+    # NOTE (2026-04-04): fix du bug "shape=patch pour bonjour presente toi".
+    # Tous les patterns ci-dessous étaient EN-only → les messages FR tombaient
+    # en fallback "small_fix" → select_output_shape retournait PATCH.
+    if len(goal) <= 30:
+        return "direct_answer"
+
+    # Salutations et questions simples FR + EN (indépendant de la longueur)
+    direct_patterns_fr_en = [
+        # English originals
         r"^what (is|are|was|were)\b", r"^how (do|does|can|to)\b",
         r"^explain\b", r"^define\b", r"^list\b", r"^show\b",
         r"^tell me\b", r"^describe\b",
+        # French greetings / simple questions
+        r"^(bonjour|salut|hello|coucou|hi|hey)\b",
+        r"^(pr[eé]sente[- ]toi|qui\s+es[- ]tu|c.est\s+quoi|qu.est[- ]ce)\b",
+        r"^(explique|dis[- ]moi|d[eé]cris|montre|liste|d[eé]finis)\b",
+        r"^(qu.est[- ]ce\s+que|comment\s+(tu|[çc]a)\s+fonctionne)\b",
+        r"^(c.est\s+qui|tu\s+(es|fais|peux)|que\s+(fais|peut))\b",
     ]
-    for p in direct_patterns:
-        if re.search(p, goal):
+    for p in direct_patterns_fr_en:
+        if re.search(p, goal, re.IGNORECASE):
             return "direct_answer"
 
-    # Small fix indicators
-    fix_patterns = [
-        r"\bfix\b", r"\bbug\b", r"\berror\b", r"\bcrash\b",
-        r"\bbroken\b", r"\b404\b", r"\b401\b", r"\bnot work",
-    ]
-    fix_count = sum(1 for p in fix_patterns if re.search(p, goal))
-    if fix_count >= 1 and len(goal) < 200:
-        return "small_fix"
-
-    # Investigation indicators
+    # Investigation indicators (EN + FR)
     investigate_patterns = [
         r"\banalyze\b", r"\binvestigate\b", r"\bdiagnose\b",
         r"\bwhy\b", r"\bread.*code\b", r"\baudit\b", r"\breview\b",
+        # FR
+        r"\banalyse\b", r"\banalyser\b", r"\bpourquoi\b",
+        r"\bdiagnostiquer?\b", r"\binspecte\b", r"\bv[eé]rifie\b",
     ]
-    if any(re.search(p, goal) for p in investigate_patterns):
+    if any(re.search(p, goal, re.IGNORECASE) for p in investigate_patterns):
         return "investigation"
 
-    # Multi-step: long goals, multiple verbs, or explicit structure
-    verb_count = sum(1 for w in words if w in {
+    # Multi-step: long goals, 1+ strong action verbs in a substantive message, or explicit structure
+    _ACTION_VERBS = {
         "build", "create", "implement", "design", "deploy", "test",
-        "refactor", "migrate", "upgrade", "integrate",
-    })
-    if verb_count >= 2 or len(goal) > 300:
+        "refactor", "migrate", "upgrade", "integrate", "generate",
+        "write", "develop", "setup", "configure",
+        # FR equivalents
+        "construis", "cree", "implemente", "deploie", "developpe",
+        "migre", "integre", "configure", "ecris", "genere", "crees",
+    }
+    verb_count = sum(1 for w in words if w in _ACTION_VERBS)
+    # 1 action verb in a message > 30 chars already warrants multi_step
+    if verb_count >= 1 or len(goal) > 300:
         return "multi_step"
 
-    return "small_fix"  # Default conservative
+    # ── Default changed: "direct_answer" is safer than "small_fix" ──────────
+    # The old default "small_fix" caused select_output_shape to return PATCH
+    # for ANY unrecognized input (especially French). A direct_answer is always
+    # safe to return; the agent can escalate if needed.
+    return "direct_answer"
 
 
 def _detect_bottleneck(
@@ -469,15 +504,31 @@ def select_output_shape(
     if frame and any("security" in d.lower() or "data loss" in d.lower() for d in frame.do_not_do):
         return OutputShape.WARNING
 
-    # Research/analysis → report
-    if re.search(r"\banalyze\b|\bresearch\b|\bcompare\b|\baudit\b|\breview\b", goal_lower):
+    # Research/analysis → report (EN + FR)
+    if re.search(
+        r"\banalyze\b|\bresearch\b|\bcompare\b|\baudit\b|\breview\b"
+        r"|\banalyse\b|\banalyser\b|\brecherche\b|\bcompare\b|\br[eé]sume\b"
+        r"|\bsynth[eé]tise\b|\b[eé]value\b|\bexplore\b",
+        goal_lower,
+    ):
         return OutputShape.REPORT
 
-    # Build/implement → plan or patch
-    if re.search(r"\bbuild\b|\bcreate\b|\bimplement\b|\bdesign\b", goal_lower):
+    # Build/implement → plan or patch (EN + FR)
+    if re.search(
+        r"\bbuild\b|\bcreate\b|\bimplement\b|\bdesign\b"
+        r"|\bcr[eé]e\b|\bconstruis\b|\bimpl[eé]mente\b|\bd[eé]veloppe\b"
+        r"|\bmet[sz]\s+en\s+place\b|\br[eé]alise\b",
+        goal_lower,
+    ):
         if complexity == "multi_step":
             return OutputShape.PLAN
         return OutputShape.PATCH
+
+    # Direct answer — never return PATCH for greetings/short questions
+    # NOTE (2026-04-04): added guard so direct_answer complexity always → DIRECT_ANSWER
+    # even if the goal somehow slipped past the complexity gate above.
+    if complexity == "direct_answer":
+        return OutputShape.DIRECT_ANSWER
 
     # Investigation → diagnosis
     if complexity == "investigation":

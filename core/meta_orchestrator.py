@@ -417,24 +417,36 @@ class MetaOrchestrator:
             log.debug("cognitive_pre_mission_skipped", err=str(_cb_err)[:60])
 
         # ── Reasoning pre-pass (intelligence upgrade) ─────────
+        # NOTE (2026-04-04): skip reasoning prepass for CHAT mode (short messages /
+        # greetings). Calling reason() on "bonjour presente toi" produced
+        # shape=patch (default small_fix fallback, English-only patterns) which
+        # caused forge-builder to be selected and LensReviewer to score 3/10.
+        # The task_mode is available in ctx.metadata["task_mode"] when set by
+        # the missions router; we also guard on raw goal length as a safety net.
+        _task_mode_str = ctx.metadata.get("task_mode", "")
+        _is_chat_mode  = (_task_mode_str == "chat") or (len(goal.strip()) <= 30)
         _reasoning_result = None
-        try:
-            from core.orchestration.reasoning_engine import reason as reasoning_prepass
-            _reasoning_result = reasoning_prepass(
-                goal=goal,
-                classification=ctx.metadata.get("classification"),
-            )
-            ctx.metadata["reasoning"] = _reasoning_result.to_dict()
-            trace.record("reason", _reasoning_result.frame.complexity_class,
-                         bottleneck=_reasoning_result.frame.likely_bottleneck[:60],
-                         shape=_reasoning_result.output_shape.value,
-                         ms=_reasoning_result.reasoning_ms)
-            log.info("reasoning_prepass_complete",
-                     mission_id=mid,
-                     complexity=_reasoning_result.frame.complexity_class,
-                     shape=_reasoning_result.output_shape.value)
-        except Exception as _rp_err:
-            log.debug("reasoning_prepass_skipped", err=str(_rp_err)[:60])
+        if _is_chat_mode:
+            log.debug("reasoning_prepass_skipped_chat_mode",
+                      mission_id=mid, goal_len=len(goal))
+        else:
+            try:
+                from core.orchestration.reasoning_engine import reason as reasoning_prepass
+                _reasoning_result = reasoning_prepass(
+                    goal=goal,
+                    classification=ctx.metadata.get("classification"),
+                )
+                ctx.metadata["reasoning"] = _reasoning_result.to_dict()
+                trace.record("reason", _reasoning_result.frame.complexity_class,
+                             bottleneck=_reasoning_result.frame.likely_bottleneck[:60],
+                             shape=_reasoning_result.output_shape.value,
+                             ms=_reasoning_result.reasoning_ms)
+                log.info("reasoning_prepass_complete",
+                         mission_id=mid,
+                         complexity=_reasoning_result.frame.complexity_class,
+                         shape=_reasoning_result.output_shape.value)
+            except Exception as _rp_err:
+                log.debug("reasoning_prepass_skipped", err=str(_rp_err)[:60])
 
         try:
             # ── Phase 1: Classify ─────────────────────────────────
