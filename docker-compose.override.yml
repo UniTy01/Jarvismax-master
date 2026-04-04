@@ -37,5 +37,68 @@ services:
       - ./self_improve:/app/self_improve
       # Suite de tests (validate.py inclus)
       - ./tests:/app/tests
+      # MCP layer (Cycle 1 + 2)
+      - ./mcp:/app/mcp
+      - ./connectors:/app/connectors
+      - ./integrations:/app/integrations
+      - ./api:/app/api
       # Fichiers racine
       - ./main.py:/app/main.py
+
+  # ── MCP Qdrant sidecar ──────────────────────────────────────
+  # Activate: docker compose --profile mcp up -d
+  # Requires: QDRANT_MCP_ENABLED=true in .env
+  # Jarvis calls it at: http://qdrant-mcp:8000/invoke
+  qdrant-mcp:
+    build:
+      context: ./docker/qdrant-mcp
+    container_name: jarvis_qdrant_mcp
+    restart: unless-stopped
+    environment:
+      QDRANT_URL:        http://qdrant:6333
+      QDRANT_API_KEY:    ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: jarvis_memory
+    networks: [jarvis_net]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+        reservations:
+          memory: 32m
+    profiles: ["mcp"]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── MCP GitHub sidecar (read-only) ──────────────────────────
+  # Activate: docker compose --profile mcp up -d
+  # Requires: GITHUB_MCP_ENABLED=true + GITHUB_TOKEN in .env
+  # Jarvis calls it at: http://github-mcp:3000/invoke
+  # Security: GITHUB_TOKEN lives only in this sidecar env, never in jarvis_core
+  github-mcp:
+    build:
+      context: ./docker/github-mcp
+    container_name: jarvis_github_mcp
+    restart: unless-stopped
+    environment:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN:-}
+    networks: [jarvis_net]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+        reservations:
+          memory: 32m
+    profiles: ["mcp"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
