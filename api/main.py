@@ -491,11 +491,8 @@ try:
 except Exception as _e:
     log.warning("modules_router_unavailable", err=str(_e))
 
-# ── Public health endpoint (no auth — required by Docker healthcheck) ──
-@app.get("/health", include_in_schema=False)
-async def health_check():
-    return {"status": "ok", "version": "2.0.0"}
-
+# NOTE: GET /health is handled by system_v2_router (mounted at line ~475, include_in_schema=False).
+# The Docker healthcheck uses that route. No duplicate needed here.
 
 # ── Session info endpoint (used by mobile app for role detection) ──
 @app.get("/api/v2/session", include_in_schema=False)
@@ -790,32 +787,9 @@ async def router_registry_status():
 # si_v2_router — self-improvement v2 endpoints mounted via si_v2_router
 # cockpit_router — cockpit monitoring endpoints (integrated into main)
 
-# ── Backward Compat: task submit + approve/reject ─────────────
-
-@app.post("/api/v2/task", tags=["missions"])
-async def submit_task(request: Request, auth: dict = Depends(require_auth)):
-    """Submit a task/mission. Primary mission creation endpoint."""
-    body = await request.json()
-    goal = body.get("goal") or body.get("task") or body.get("input", "")
-    if not goal:
-        raise HTTPException(status_code=422, detail="goal required")
-    import uuid; mission_id = str(uuid.uuid4())
-    pass  # stored in-memory
-    return {"mission_id": mission_id, "status": "submitted"}
-
-
-@app.post("/api/v2/task/{task_id}/approve", tags=["approvals"])
-async def approve_task(task_id: str, auth: dict = Depends(require_auth)):
-    """Approve a pending task/action."""
-    pass  # stored in-memory
-    return {"ok": True, "task_id": task_id, "status": "approved"}
-
-
-@app.post("/api/v2/task/{task_id}/reject", tags=["approvals"])
-async def reject_task(task_id: str, auth: dict = Depends(require_auth)):
-    """Reject a pending task/action."""
-    pass  # stored in-memory
-    return {"ok": True, "task_id": task_id, "status": "rejected"}
+# NOTE: POST /api/v2/task is handled by missions_v3_router (missions.py, mounted at line ~311).
+# POST /api/v2/tasks/{id}/approve and /reject are also in missions.py.
+# Stubs removed — they returned fake data (pass + static dict) and were never reached.
 
 
 # ── Static files (dashboard) — DOIT ÊTRE EN DERNIER ───────────

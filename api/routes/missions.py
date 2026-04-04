@@ -1167,9 +1167,10 @@ async def set_system_mode(req: ModeRequest, x_jarvis_token: Annotated[Optional[s
 # ── Legacy SSE alias (Flutter may call this path) ─────────────
 
 @router.get("/api/mission/{mission_id}/stream")
-@router.get("/api/v1/missions/{mission_id}/stream")
+# NOTE: /api/v1/missions/{mission_id}/stream is handled by mission_control_router
+# (prefix="/api/v1", mounted first at line ~178 in main.py). Duplicate removed.
 async def stream_mission_compat(mission_id: str):
-    """SSE stream — Flutter app calls /api/v1/missions/{id}/stream"""
+    """SSE stream — legacy alias; /api/v1/missions/{id}/stream handled by mission_control."""
     try:
         from api.routes.mission_control import _sse_generator
         from fastapi.responses import StreamingResponse

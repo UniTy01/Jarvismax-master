@@ -51,17 +51,10 @@ async def plan_resume(plan_id: str, _user: dict = Depends(require_auth)):
     raise HTTPException(404, "No resumable run for this plan")
 
 
-@router.post("/api/v3/plans/{plan_id}/cancel")
-async def plan_cancel(plan_id: str, _user: dict = Depends(require_auth)):
-    """Cancel the active run for this plan."""
-    from core.planning.run_state import get_run_store
-    for run_data in get_run_store().list_all():
-        if run_data.get("plan_id") == plan_id and run_data.get("status") not in ("completed", "failed", "cancelled"):
-            from core.planning.plan_runner import get_plan_runner
-            run = get_plan_runner().cancel(run_data["run_id"])
-            return {"ok": True, "data": run.to_dict()}
-    raise HTTPException(404, "No active run for this plan")
-
+# NOTE: POST /api/v3/plans/{plan_id}/cancel is handled by operational_tools_router
+# (mounted first at line ~395 in main.py). That version cancels the plan entity.
+# This run-cancellation logic is preserved below as /api/v3/plans/{plan_id}/runs/cancel
+# if needed. For now, route removed to avoid silent duplicate.
 
 @router.get("/api/v3/plans/{plan_id}/runs")
 async def plan_runs(plan_id: str, _user: dict = Depends(require_auth)):

@@ -6,6 +6,8 @@ Registered in api/main.py as system_v2_router.
 
 NOTE: POST /api/system/mode is intentionally absent here.
       It is handled exclusively by missions.py (mounted first in main.py).
+NOTE: GET /api/v2/system/capabilities is intentionally absent here.
+      It is handled exclusively by monitoring.py (mounted first in main.py).
 
 Endpoints:
   GET/POST /api/system/mode/uncensored
@@ -13,7 +15,6 @@ Endpoints:
   GET      /api/v2/decision-memory/registry
   GET      /api/v2/system/policy-mode
   POST     /api/v2/system/policy-mode
-  GET      /api/v2/system/capabilities
   GET      /api/v2/metrics/recent
   GET      /api/v2/knowledge/recent
   GET      /api/v2/plan/last
@@ -112,35 +113,6 @@ async def set_policy_mode(request: Request, _user: dict = _auth):
         mode = body.get("policy_mode", "BALANCED")
         ok = get_policy_mode_store().set(mode)
         return {"ok": ok, "data": get_policy_mode_store().to_dict()}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-# ── System Capabilities ──────────────────────────────────────
-
-@router.get("/api/v2/system/capabilities")
-async def get_capabilities(_user: dict = _auth):
-    try:
-        from core.tool_registry import get_tool_registry
-        from core.policy_mode import POLICY_MODE_DESCRIPTIONS
-        reg = get_tool_registry()
-        return {
-            "ok": True,
-            "data": {
-                "agents": [
-                    "scout-research", "forge-builder", "lens-reviewer",
-                    "map-planner", "pulse-ops", "shadow-advisor"
-                ],
-                "tools": reg.summary(),
-                "mission_types": [
-                    "info_query", "compare_query", "coding_task", "debug_task",
-                    "architecture_task", "research_task", "system_task",
-                    "business_task", "planning_task", "evaluation_task",
-                    "self_improvement_task"
-                ],
-                "policy_modes": POLICY_MODE_DESCRIPTIONS,
-            }
-        }
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
