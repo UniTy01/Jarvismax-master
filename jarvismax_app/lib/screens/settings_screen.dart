@@ -216,10 +216,8 @@ class SettingsScreen extends StatelessWidget {
     );
     if (confirmed != true) return;
     await SessionManager.instance.logout();
-    if (ctx.mounted) {
-      Navigator.of(ctx).popUntil((route) => route.isFirst);
-      (ctx as Element).markNeedsBuild();
-    }
+    // clearJwt() calls notifyListeners() → _AppState watches jwtToken → shows LoginScreen
+    if (ctx.mounted) await ctx.read<ApiService>().clearJwt();
   }
 }
 
