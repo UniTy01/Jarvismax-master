@@ -19,6 +19,7 @@ workspace/missions/
 workspace/patches/
 workspace/.backups/
 workspace/sandboxes/
+workspace/builds/
 
 # ── Python ───────────────────────────────────────────────────
 __pycache__/

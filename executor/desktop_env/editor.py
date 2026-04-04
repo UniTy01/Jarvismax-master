@@ -40,8 +40,9 @@ class SurgicalEditor:
             end = min(len(lines), end)
                 
             output = [f"> [{filepath} lignes {start+1}-{end}]"]
+            _nl = '\n'
             for i in range(start, end):
-                output.append(f"{i + 1:4d} | {lines[i].rstrip('\n')}")
+                output.append(f"{i + 1:4d} | {lines[i].rstrip(_nl)}")
             
             return "\n".join(output)
             

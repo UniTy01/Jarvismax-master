@@ -628,5 +628,14 @@ class ActionExecutor:
             "executed_total":   self._executed_total,
             "failed_total":     self._failed_total,
             "skipped_total":    self._skipped_total,
-            "poll_interval_s":  _POLL_INTERVAL,
+            "poll_interval_seconds": _POLL_INTERVAL,
         }
+
+
+# ── Module-level API ──────────────────────────────────────────────────────────
+
+def get_executor() -> ActionExecutor:  # noqa: F811 (re-export alias)
+    global _executor_instance
+    if _executor_instance is None:
+        _executor_instance = ActionExecutor()
+    return _executor_instance
