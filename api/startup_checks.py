@@ -195,3 +195,5 @@ def enforce_startup_checks(env: dict | None = None) -> None:
             f"Startup blocked by {len(report.blockers)} check(s): {', '.join(blocker_names)}. "
             "Fix the environment variables and restart."
         )
+
+# deploy trigger 1775321292
